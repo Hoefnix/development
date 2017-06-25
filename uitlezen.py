@@ -113,12 +113,6 @@ try:
 				
 			time.sleep(61-int(time.strftime("%S"))) #slaap de rest van de minuut
 
-#	Close port and show status
-#	try:
-#		ser.close()
-#	except:
-#		sys.exit ("Oops %s. Programma afgebroken. Kon de seriele poort niet sluiten." % ser.name )
-
 except KeyboardInterrupt:
 	print ('\nAfsluiten...\n')
 	ser.close()
