@@ -40,6 +40,42 @@ sensoren	=	json.loads( jsonstring )
 
 thread = None # voor getstatus() thread
 
+class octoprint():
+	def __init__(self):
+		self.hotend = 0
+		self.bed = 0
+		self.operational = False
+		self.printing = False		
+		self.apikey = {'X-Api-Key': '5A56D03925A2480EA68D6B40AAAC0B17'}
+		self.interval = randint(275,325)
+		self.resultaat = None
+		
+		self.check()
+		
+	def check(self):
+		self.thread = threading.Timer(self.interval, self.check)
+		self.thread.start()
+
+		self.resultaat = requests.get('http://192.168.178.125:5000/api/printer', headers=self.apikey)
+		self.bed = float(self.resultaat.json()["temperature"]["bed"]["actual"])
+		self.hotend = float(self.resultaat.json()["temperature"]["tool0"]["actual"])
+		self.operational = self.resultaat.json()["state"]["flags"]["operational"]
+		self.printing = self.resultaat.json()["state"]["flags"]["printing"]
+	
+		#	if   command.endswith("percentage"):
+		#		#duplilicht.schakel(command[-3:]) 			
+		#	elif command.endswith("bed"):
+		#		#duplilicht.schakel(command[-3:]) 
+		#	elif command.endswith("hotend"):
+		#		#duplilicht.schakel(command[-3:]) 
+		#	elif command.endswith(("aan","uit","flp")):
+		#		#duplilicht.schakel(command[-3:])
+		
+	def stop(self):
+		bericht("Octoprint wordt gestopt...")
+		self.thread.cancel()
+
+	
 def thingspeak(veld="field6",waarde=None):
 	bericht("Thingspeak update: %s = %s"%(veld,waarde))
 
@@ -636,15 +672,36 @@ class myHandler(BaseHTTPRequestHandler):
 			self.respond("%s"%alarmsysteem.status)
 			
 		elif command.startswith("duplicator"):
-			if command.endswith(("aan","uit","flp")):
-				duplicator.schakel(command[-3:]) 
-			self.respond("%s"%duplicator.aanuit)
+			#if command.endswith(("aan","uit","flp")):
+				#duplicator.schakel(command[-3:]) 
+			#self.respond("%s"%duplicator.aanuit)
+			self.respond("0")
 			
 		elif command.startswith("duplilamp"):
-			if command.endswith(("aan","uit","flp")):
-				duplilicht.schakel(command[-3:]) 
-			self.respond("%s"%duplilicht.aanuit)
+			#if command.endswith(("aan","uit","flp")):
+				#duplilicht.schakel(command[-3:]) 
+			#self.respond("%s"%duplilicht.aanuit)
+			self.respond("0")
 
+		elif command.startswith("octoprint"):
+			if command.endswith("bed"):
+				self.respond("%s"%duplicator.bed)
+			elif command.endswith("hotend"):
+				self.respond("%s"%duplicator.hotend)
+			elif command.endswith("hotend"):
+				self.respond("%s"%duplicator.hotend)
+			elif command.endswith("printing"):
+				self.respond("%s"%duplicator.printing)
+			elif command.endswith("operational"):
+				self.respond("%s"%duplicator.operational)
+			elif command.endswith(("aan","uit","flp")):
+				if not duplicator.printing:
+					self.respond("printer wordt %s gezet"%command[-3:])
+				else:
+					self.respond("printer is bezig")
+			else:
+				self.respond("gebruik [bed|hotend|printing|operational|aan|uit|flp]")
+			
 		else:
 			bericht( "Opdracht niet begrepen: %s"%command)				
 			self.respond("Opdracht niet begrepen: %s"%command)				
@@ -668,13 +725,14 @@ try:
 
 	gevellamp	= aanuitinit("http://192.168.178.208?gpio0")
 	bureaulamp	= aanuitinit("http://192.168.178.202?gpio04")
-	duplicator	= aanuitinit("http://192.168.178.120:1208?duplicator")
-	duplilicht	= aanuitinit("http://192.168.178.120:1208?duplilicht")
+	#duplicator	= aanuitinit("http://192.168.178.120:1208?duplicator")
+	#duplilicht	= aanuitinit("http://192.168.178.120:1208?duplilicht")
 	
 	woonkamer 	 = woonkamerinit()
 	keuken		 = keukeninit()
 	tuinhuis		 = tuinhuisinit()
 	alarmsysteem = woonveilig()
+	duplicator	= octoprint()
 	
 	bericht ("Huidige status wordt opgehaald\n" )
 	getstatus()
@@ -694,11 +752,12 @@ except KeyboardInterrupt:
 	
 	gevellamp.stop()
 	bureaulamp.stop()
-	duplicator.stop()
-	duplilicht.stop()
+	#duplicator.stop()
+	#duplilicht.stop()
 	keuken.stop()
 	tuinhuis.stop()
 	alarmsysteem.stop()
+	duplicator.stop()
 	
 	os.remove('/var/tmp/httplistner.pid')
 	subprocess.call("/usr/bin/screen -dmS schakelaars python3 /opt/development/httplistner.py", shell=True)
