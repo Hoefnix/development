@@ -45,10 +45,11 @@ class octoprint():
 		self.hotend = 0
 		self.bed = 0
 		self.operational = False
-		self.printing = False		
+		self.printing = 0		
 		self.apikey = {'X-Api-Key': '5A56D03925A2480EA68D6B40AAAC0B17'}
 		self.interval = randint(275,325)
 		self.resultaat = None
+		self.percentage = 0
 		
 		self.check()
 		
@@ -58,18 +59,14 @@ class octoprint():
 
 		self.resultaat = requests.get('http://192.168.178.125:5000/api/printer', headers=self.apikey)
 		self.bed = float(self.resultaat.json()["temperature"]["bed"]["actual"])
-		self.hotend = float(self.resultaat.json()["temperature"]["tool0"]["actual"])
+		self.hotend = int(float(self.resultaat.json()["temperature"]["tool0"]["actual"])/10)
 		self.operational = self.resultaat.json()["state"]["flags"]["operational"]
-		self.printing = self.resultaat.json()["state"]["flags"]["printing"]
-	
-		#	if   command.endswith("percentage"):
-		#		#duplilicht.schakel(command[-3:]) 			
-		#	elif command.endswith("bed"):
-		#		#duplilicht.schakel(command[-3:]) 
-		#	elif command.endswith("hotend"):
-		#		#duplilicht.schakel(command[-3:]) 
-		#	elif command.endswith(("aan","uit","flp")):
-		#		#duplilicht.schakel(command[-3:])
+		self.printing = "1" if self.resultaat.json()["state"]["flags"]["printing"] else "0"
+		
+		self.resultaat = requests.get('http://192.168.178.125:5000/api/job', headers=self.apikey)
+		#self.percentage = self.resultaat.json()["job"]["progress"]["completion"]
+		bericht("%s\n"%int(float(self.resultaat.json()["progress"]["completion"])))
+		self.percentage = int(float(self.resultaat.json()["progress"]["completion"]))
 		
 	def stop(self):
 		bericht("Octoprint wordt gestopt...")
@@ -685,13 +682,11 @@ class myHandler(BaseHTTPRequestHandler):
 
 		elif command.startswith("octoprint"):
 			if command.endswith("bed"):
-				self.respond("%s"%duplicator.bed)
+				self.respond( "{\"temperature\":%s}"%duplicator.bed )
 			elif command.endswith("hotend"):
-				self.respond("%s"%duplicator.hotend)
-			elif command.endswith("hotend"):
-				self.respond("%s"%duplicator.hotend)
+				self.respond("{\"temperature\":%s,\"humidity\":%s}"%(duplicator.hotend,duplicator.percentage) )
 			elif command.endswith("printing"):
-				self.respond("%s"%duplicator.printing)
+				self.respond( duplicator.printing )
 			elif command.endswith("operational"):
 				self.respond("%s"%duplicator.operational)
 			elif command.endswith(("aan","uit","flp")):
