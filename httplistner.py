@@ -58,6 +58,7 @@ class octoprint():
 		self.thread.start()
 
 		self.resultaat = requests.get('http://192.168.178.125:5000/api/printer', headers=self.apikey)
+		bericht(self.resultaat.text)
 		self.bed = float(self.resultaat.json()["temperature"]["bed"]["actual"])
 		self.hotend = int(float(self.resultaat.json()["temperature"]["tool0"]["actual"])/10)
 		self.operational = self.resultaat.json()["state"]["flags"]["operational"]
