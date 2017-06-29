@@ -18,6 +18,20 @@ def bericht(message=None):
 	if not message is None:
 		print("\033[3m%s\033[0m - %s\033[0m"%(time.strftime("%H:%M:%S"),message))
 		
+def telegram( chat_id="12463680", message = None, image = None ):
+	if not message is None:
+		url = "https://api.telegram.org/bot328955454:AAEmupBEwE0D7V1vsoB8Xo5YY1wGIFpu6AE/sendMessage"
+		payload = {"chat_id":chat_id, "text":message, "parse_mode":"HTML"}
+		r = requests.get(url, params=payload)	
+		return (r.json()["ok"])
+		
+	elif not image is None:
+		url	= "https://api.telegram.org/bot112338525:AAGyQLESoyVnCAdBJZTdaRcgV5KwN3uGipU/sendPhoto"
+		data	= {'chat_id': chat_id}
+		files	= {'photo': (image, open(image, "rb"))}
+		r = requests.post(url , data=data, files=files)
+		return (r.json()["ok"])
+		
 class lichtsterkte(object):
 	def __init__(self, seconden=300):
 		self.start = 0
@@ -70,6 +84,7 @@ class schakelaar(object):
 		else:
 			self.status = 0 if aanofuit == "aan" else 1 
 		GPIO.output(self.pin, self.status)
+		self.status = GPIO.input(self.pin)
 		return "aan" if self.status == 0 else "uit"
 
 	def check(self):
@@ -115,25 +130,33 @@ class myHandler(BaseHTTPRequestHandler):
 			
 			self.respond( antwoord )
 			
+		elif command.startswith("lichtsterkte"):
+			self.respond("{\"licht\":%s}"%licht.lichtsterkte)
+
+		elif command.startswith("foto"):
+			subprocess.call("/usr/bin/fswebcam -c /home/pi/bureauPi.cfg", shell=True)
+			telegram(image = "/var/tmp/bureauPi.jpg")
+			self.respond("Foto verstuurd\n")
+
 		elif command.startswith("printer"):
 			if	command.endswith(("aan","uit","flp")):
 				bericht("printer is %s gezet"%printer.schakel(command[-3:]) )
-			self.respond("%s"%printer.status)
+			self.respond("%s"%abs(printer.status-1))
 			
 		elif command.startswith("bureaulamp"):
 			if	command.endswith(("aan","uit","flp")):
 				bericht("bureaulamp is %s gezet"%bureaulamp.schakel(command[-3:]) )
-			self.respond("%s"%bureaulamp.status)
+			self.respond("%s"%abs(bureaulamp.status-1))
 			
 		elif command.startswith("bureau"):
 			if	command.endswith(("aan","uit","flp")):
 				bericht("bureau is %s gezet"%bureau.schakel(command[-3:]) )
-			self.respond("%s"%bureau.status)
+			self.respond("%s"%abs(bureau.status-1))
 			
 		elif command.startswith("relais"):
 			if	command.endswith(("aan","uit","flp")):
 				bericht("relais is %s gezet"%relais.schakel(command[-3:]) )
-			self.respond("%s"%relais.status)
+			self.respond("%s"%abs(relais.status-1))
 		else:
 			self.respond("BureauPi luistert naar [status|printer|bureaulamp|bureau|relais]")
 		return
@@ -155,4 +178,4 @@ except KeyboardInterrupt:
 	bericht("ctrl-c ontvangen, bureaupi wordt opnieuw gestart")
 	licht.stop()
 							
-	subprocess.call("screen -dmLS bureauPi python3 /opt/development/bureauPi.py", shell=True)
+	subprocess.call("screen -dmLS bureauPi python3 %s"%__file__, shell=True)

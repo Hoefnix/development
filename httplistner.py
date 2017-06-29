@@ -58,16 +58,18 @@ class octoprint():
 		self.thread.start()
 
 		self.resultaat = requests.get('http://192.168.178.125:5000/api/printer', headers=self.apikey)
-		bericht(self.resultaat.text)
-		self.bed = float(self.resultaat.json()["temperature"]["bed"]["actual"])
-		self.hotend = int(float(self.resultaat.json()["temperature"]["tool0"]["actual"])/10)
-		self.operational = self.resultaat.json()["state"]["flags"]["operational"]
-		self.printing = "1" if self.resultaat.json()["state"]["flags"]["printing"] else "0"
+#		bericht("octoprint (printer) %s"%(self.resultaat.text))
+		if "not operational" not in self.resultaat.text:
+			self.bed = float(self.resultaat.json()["temperature"]["bed"]["actual"])
+			self.hotend = int(float(self.resultaat.json()["temperature"]["tool0"]["actual"])/10)
+			self.operational = self.resultaat.json()["state"]["flags"]["operational"]
+			self.printing = "1" if self.resultaat.json()["state"]["flags"]["printing"] else "0"
 		
-		self.resultaat = requests.get('http://192.168.178.125:5000/api/job', headers=self.apikey)
-		#self.percentage = self.resultaat.json()["job"]["progress"]["completion"]
-		bericht("%s\n"%int(float(self.resultaat.json()["progress"]["completion"])))
-		self.percentage = int(float(self.resultaat.json()["progress"]["completion"]))
+			self.resultaat = requests.get('http://192.168.178.125:5000/api/job', headers=self.apikey)
+#			bericht("octoprint (job) %s"%self.resultaat.text)
+			#self.percentage = self.resultaat.json()["job"]["progress"]["completion"]
+			bericht("%s\n"%int(float(self.resultaat.json()["progress"]["completion"])))
+			self.percentage = int(float(self.resultaat.json()["progress"]["completion"]))
 		
 	def stop(self):
 		bericht("Octoprint wordt gestopt...")
@@ -139,7 +141,7 @@ def pushover( bericht = "" ):
 		bericht("Pushover - Fout")
 	return
 
-class aanuitinit(object):
+class aanuit(object):
 	#	url moet 'kale'url zijn waarvoor geldt:
 	#	- zonder toevoegingen de status van wordt teruggeven, laatste character resultaatstring is 0 of 1
 	#	- schakelt met additionele "=aan" of "=uit"
@@ -406,12 +408,19 @@ class keukeninit(object):
 				self.stopcontact	= int(resultaat.json()["aanuit2"])
 				bericht("keukendeur is %s"%self.deur)
 
-		resultaat = httpGet("http://192.168.178.50/lichtsterkte.json")
+#		resultaat = httpGet("http://192.168.178.50/lichtsterkte.json")
+#		if (resultaat.status_code == requests.codes.ok):
+#			if not empty(resultaat.text):
+#				if not int(resultaat.json()["licht"]) is self.licht:
+#					self.licht = int(resultaat.json()["licht"])
+#					thingspeak("field1", self.licht)		
+					
+		resultaat = httpGet("http://192.168.178.34:1964?lichtsterkte")
 		if (resultaat.status_code == requests.codes.ok):
 			if not empty(resultaat.text):
 				if not int(resultaat.json()["licht"]) is self.licht:
 					self.licht = int(resultaat.json()["licht"])
-					thingspeak("field1", self.licht)					
+					thingspeak("field1", self.licht)			
 		return
 		
 	def stop(self):
@@ -719,16 +728,17 @@ def httpGet( httpCall, wachten = 4):
 try:
 #	Create a web server and define the handler to manage the incoming request
 
-	gevellamp	= aanuitinit("http://192.168.178.208?gpio0")
-	bureaulamp	= aanuitinit("http://192.168.178.202?gpio04")
-	#duplicator	= aanuitinit("http://192.168.178.120:1208?duplicator")
-	#duplilicht	= aanuitinit("http://192.168.178.120:1208?duplilicht")
+	gevellamp	= aanuit("http://192.168.178.208?gpio0")
+	bureaulamp	= aanuit("http://192.168.178.34:1964?bureaulamp")
+	#bureaulamp	= aanuit("http://192.168.178.202?gpio04")
+	#duplicator	= aanuit("http://192.168.178.120:1208?duplicator")
+	#duplilicht	= aanuit("http://192.168.178.120:1208?duplilicht")
 	
 	woonkamer 	 = woonkamerinit()
 	keuken		 = keukeninit()
-	tuinhuis		 = tuinhuisinit()
+	tuinhuis	 = tuinhuisinit()
 	alarmsysteem = woonveilig()
-	duplicator	= octoprint()
+	duplicator	 = octoprint()
 	
 	bericht ("Huidige status wordt opgehaald\n" )
 	getstatus()
