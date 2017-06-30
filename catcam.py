@@ -31,7 +31,7 @@ def night():
 
 	return 1 if (sr_next < ss_next) else 0
 
-def telegram( chat_id="12463680", message = None, image = None ):
+def telegram( chat_id="-12086796", message = None, image = None ):
 	if not message is None:
 		url = "https://api.telegram.org/bot328955454:AAEmupBEwE0D7V1vsoB8Xo5YY1wGIFpu6AE/sendMessage"
 		payload = {"chat_id":chat_id, "text":message, "parse_mode":"HTML"}

@@ -27,9 +27,6 @@ jsonstring +=	'}'
 schakelaars =	json.loads( jsonstring )
 
 jsonstring  =	'{'
-jsonstring +=  '"badkmrtmp":0,'
-jsonstring +=  '"badkmrlvh":0,'
-jsonstring +=  '"badkmrdpl":0,'
 jsonstring += '"bijburtemp":0,'
 jsonstring += '"bijburhumi":0,'
 jsonstring += '"bijburlcht":0,'
@@ -177,7 +174,7 @@ class aanuit(object):
 		bericht("%s check wordt gestopt..."%self.deviceurl)
 		self.thread.cancel()
 
-class tuinhuisinit(object):
+class Tuinhuis(object):
 	def __init__(self):
 		self.temperatuur = 0
 		self.aanuit = 0
@@ -189,7 +186,7 @@ class tuinhuisinit(object):
 	def schakel(self, aanofuit):
 		if aanofuit == "flp":
 			aanofuit = "uit" if self.aanuit == 1 else "aan" 
-		resultaat = httpGet("http://192.168.178.21/%s"%aanofuit, 3)
+		resultaat = httpGet("http://192.168.178.21/%s"%aanofuit, 3, "Tuinhuis: ")
 		if (resultaat.status_code == requests.codes.ok):
 			if not empty(resultaat.text):
 				self.aanuit = json.loads( resultaat.text )["aanuit"]
@@ -199,7 +196,7 @@ class tuinhuisinit(object):
 		self.thread = threading.Timer(self.interval, self.check)
 		self.thread.start()
 		
-		resultaat = httpGet("http://192.168.178.21/status", 4)
+		resultaat = httpGet("http://192.168.178.21/status", 4, "Tuinhuis: ")
 		if (resultaat.status_code == requests.codes.ok):
 			self.aanuit = resultaat.json()["aanuit"]
 			self.deur 	= resultaat.json()["deur"]
@@ -427,6 +424,42 @@ class keukeninit(object):
 		bericht("Keukencheck wordt gestopt...")
 		self.thread.cancel()
 				
+class Badkamer(object):
+	def __init__(self):
+		self.temperatuur = 0
+		self.luchtvochtigheid = 0
+		self.drempelwaarde = 0
+		self.interval = randint(275,325)
+		self.check()
+			
+	def drempelwaarde(self, waarde):
+		return self.drempelwaarde
+
+	def check(self):
+		self.thread = threading.Timer(self.interval, self.check)
+		self.thread.start()
+	
+		resultaat = httpGet("http://192.168.178.24/status", label="Badkamer: ")
+		if (resultaat.status_code == requests.codes.ok):
+#			{"naam":"badkamer","temperatuur":22.00,"luchtvochtigheid":41.00,"drempelwaarde":51}
+			if not empty(resultaat.text):
+				try:
+					self.temperatuur		 = waarde(resultaat.json()["temperatuur"])
+					self.luchtvochtigheid = waarde(resultaat.json()["luchtvochtigheid"])
+					self.drempelwaarde	 = waarde(resultaat.json()["drempelwaarde"])
+				
+					bericht("Badkamer: %s, %s\% (%s\%)"%(self.temperatuur,self.luchtvochtigheid,self.drempelwaarde))
+				except:
+					pass
+			else:
+				bericht("Response uit de badkamer(192.168.178.24) is leeg")
+		return
+		
+	def stop(self):
+		bericht("%s wordt gestopt..."%self.__class__.__name__.capitalize())
+		self.thread.cancel()
+				
+
 def getstatus():
 	global schakelaars, sensoren, thread
 	
@@ -455,20 +488,6 @@ def getstatus():
 	resultaat = httpGet("http://192.168.178.205/status")
 	if (resultaat.status_code == requests.codes.ok):
 		schakelaars["ventilatie"] = resultaat.text
-		
-	#	Badkamer
-	resultaat = httpGet("http://192.168.178.24/status")
-	if (resultaat.status_code == requests.codes.ok):
-#		{"naam":"badkamer","temperatuur":22.00,"luchtvochtigheid":41.00,"drempelwaarde":51}
-		if not empty(resultaat.text):
-			try:
-				sensoren["badkmrtmp"] = waarde(resultaat.json()["temperatuur"])
-				sensoren["badkmrlvh"] = waarde(resultaat.json()["luchtvochtigheid"])
-				sensoren["badkmrdpl"] = waarde(resultaat.json()["drempelwaarde"])
-			except:
-				pass
-		else:
-			bericht("Response badkamer(192.168.178.24) is leeg")
 			
 	#	Sensoren bij bureau
 	resultaat = httpGet("http://192.168.178.202?metingen")
@@ -626,9 +645,7 @@ class myHandler(BaseHTTPRequestHandler):
 				
 		elif command.startswith("badkamer"):
 			if command.endswith("temphum"):
-				self.respond( "{\"temperature\":%s,\"humidity\":%s}"%(sensoren["badkmrtmp"],sensoren["badkmrlvh"]))
-			elif command.endswith("status"):
-				self.respond("{\"temperatuur\":%s,\"luchtvochtigheid\":%s,\"drempelwaarde\":%s}"%(sensoren["badkmrtmp"],sensoren["badkmrlvh"],sensoren["badkmrdpl"]))
+				self.respond( "{\"temperature\":%s,\"humidity\":%s}"%(badkamer.temperatuur, badkamer.luchtvochtigheid))
 
 		elif command.startswith("bijbureau"):
 			if command.endswith("temphum"):
@@ -712,42 +729,38 @@ class myHandler(BaseHTTPRequestHandler):
 			self.respond("Opdracht niet begrepen: %s"%command)				
 		return
 		
-def httpGet( httpCall, wachten = 4):
+def httpGet( httpCall, wachten = 4, label=""):
 	bericht( "\033[33mhttpGet: %s"%httpCall )
 	resultaat = requests.Response
 	try:
 		resultaat = requests.get(httpCall, timeout=wachten)
 	except requests.Timeout as e:
-		bericht("\033[31m%s: url=%s, timeout=%s"%(e, httpCall, wachten))
+		bericht("%s\033[31m%s: url=%s, timeout=%s"%(label, e, httpCall, wachten))
 		resultaat.status_code = 999
 	except:
-		bericht("\033[31mFout: url=%s, timeout=%s"%(httpCall,wachten))
+		bericht("%s\033[31mFout: url=%s, timeout=%s"%(label,httpCall,wachten))
 		resultaat.status_code = 999
 	return resultaat
 			
 try:
 #	Create a web server and define the handler to manage the incoming request
+	bericht ("Initialisatie...\n" )
 
-	gevellamp	= aanuit("http://192.168.178.208?gpio0")
-	bureaulamp	= aanuit("http://192.168.178.34:1964?bureaulamp")
-	#bureaulamp	= aanuit("http://192.168.178.202?gpio04")
-	#duplicator	= aanuit("http://192.168.178.120:1208?duplicator")
-	#duplilicht	= aanuit("http://192.168.178.120:1208?duplilicht")
-	
-	woonkamer 	 = woonkamerinit()
-	keuken		 = keukeninit()
-	tuinhuis	 = tuinhuisinit()
+	gevellamp	 = aanuit("http://192.168.178.208?gpio0")
+	bureaulamp	 = aanuit("http://192.168.178.34:1964?bureaulamp")
+	badkamer		 = Badkamer()
 	alarmsysteem = woonveilig()
 	duplicator	 = octoprint()
+	woonkamer 	 = woonkamerinit()
+	keuken		 = keukeninit()
+	tuinhuis		 = Tuinhuis()
 	
-	bericht ("Huidige status wordt opgehaald\n" )
 	getstatus()
-	bericht ("Huidige status geladen\n" )
 	
 	server = HTTPServer(('', PORT_NUMBER), myHandler)
 	with open('/var/tmp/httplistner.pid', 'w') as myfile:
 		data = myfile.write( '{"pid":%s}'%os.getpid() )
-	bericht("%s luistert naar poort %d"%(__file__, PORT_NUMBER), viaPushover = True)
+	bericht("Actief op poort %d"%PORT_NUMBER, viaPushover = True)
 	
 	server.serve_forever() # Wait forever for incoming http requests
 
@@ -758,12 +771,11 @@ except KeyboardInterrupt:
 	
 	gevellamp.stop()
 	bureaulamp.stop()
-	#duplicator.stop()
-	#duplilicht.stop()
 	keuken.stop()
 	tuinhuis.stop()
 	alarmsysteem.stop()
 	duplicator.stop()
+	badkamer.stop()
 	
 	os.remove('/var/tmp/httplistner.pid')
 	subprocess.call("/usr/bin/screen -dmS schakelaars python3 /opt/development/httplistner.py", shell=True)
