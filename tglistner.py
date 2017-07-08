@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 import socket
 import requests
+import threading
 
 # Send UDP broadcast packets
 
@@ -21,6 +22,8 @@ tgAPIcode = "112338525:AAGyQLESoyVnCAdBJZTdaRcgV5KwN3uGipU"
 JSONresult= "/var/tmp/result.json"
 Johannes_Smits = "12463680"  
 Werk_in_de_straat = "-4417251"
+
+thread = None # voor getstatus() thread
 
 def allin( zin, lijst ):
 	waarde = True
@@ -63,32 +66,68 @@ def httpGet( url, auth = None, params = ""):
 		resultaat = requests.get( url, params=params, auth=auth )
 	except:
 		bericht("fout bij aanroep %s"%url)
+		pass
 	return resultaat
 	
 def bericht(message=None):
 	if not message is None:
 		print("\033[3m%s\033[0m - %s"%(time.strftime("%H:%M:%S"),message))
+		
+class stopcontact(object):
+	def __init__(self):
+		self.interval = 300.0
 
+	def aanuit(self, aanofuit):
+		if aanofuit == "aan":
+			self.thread = threading.Timer(self.interval, self.uit)
+			self.thread.start()
+		elif aanofuit == "uit":
+			self.thread.cancel()
+		else:	
+			return None
+			
+		resultaat = httpGet("http://192.168.178.203/%s:2"%aanofuit)	
+		if (resultaat.status_code == requests.codes.ok):
+			bericht("Sproeier is nu %sgezet"%aanofuit)
+		return resultaat.text
+
+	def uit(self):
+		resultaat = httpGet("http://192.168.178.203/uit:2")	
+		if (resultaat.status_code == requests.codes.ok):
+			bericht("Sproeier is nu automatisch uitgezet")
+			telegram(bericht="Sproeier is nu automatisch uitgezet")
+		return resultaat.text
+		
 def doSomething( string ):
-	global udp
+	global udp, sproeier
 	
 	message = string["text"].lower()
 
 	if	allin(message, ["licht", "aan", "woonkamer"]):
 		respond(string["from"]["id"], "Woonkamerverlichting wordt nu aangezet" )
-		bericht(httpGet("http://192.168.178.100:1208?woonkamer:aan").url)
-		bericht(httpGet("http://192.168.178.100:1208?bureaulamp:aan").url)
+		bericht(httpGet("http://192.168.178.50:1208?woonkamer:aan").url)
+		bericht(httpGet("http://192.168.178.50:1208?bureaulamp:aan").url)
 							
 	elif allin(message, ["licht", "uit", "woonkamer"]):
 		respond(string["from"]["id"], "Woonkamerverlichting wordt nu uitgezet" )
-		bericht(httpGet("http://192.168.178.100:1208?woonkamer:uit").url)
-		bericht(httpGet("http://192.168.178.100:1208?bureaulamp:uit").url)
+		bericht(httpGet("http://192.168.178.50:1208?woonkamer:uit").url)
+		bericht(httpGet("http://192.168.178.50:1208?bureaulamp:uit").url)
+		
+	elif allin(message, ["uit", "sproeier"]):
+		if (socket.gethostname().lower() == "serverpi"):
+			respond(string["from"]["id"], "Sproeier wordt nu uitgezet" )
+			bericht(sproeier.aanuit("uit"))
+
+	elif allin(message, ["aan", "sproeier"]):
+		if (socket.gethostname().lower() == "serverpi"):
+			respond(string["from"]["id"], "Sproeier wordt nu aangezet" )
+			bericht(sproeier.aanuit("aan"))
 		
 	elif allin(message, ['welterusten']):
 		respond(string["from"]["id"], "Licht wordt overal uitgezet" )
-		bericht(httpGet("http://192.168.178.100:1208?keuken:uit").url)
-		bericht(httpGet("http://192.168.178.100:1208?woonkamer:uit").url)
-		bericht(httpGet("http://192.168.178.100:1208?bureaulamp:uit").url)
+		bericht(httpGet("http://192.168.178.50:1208?keuken:uit").url)
+		bericht(httpGet("http://192.168.178.50:1208?woonkamer:uit").url)
+		bericht(httpGet("http://192.168.178.50:1208?bureaulamp:uit").url)
 		bericht(httpGet("http://192.168.178.210?uit" ).url) # bureau
 		
 	elif allin(message, ["foto", "kattenluik"]):
@@ -101,13 +140,21 @@ def doSomething( string ):
 		ipadres = httpGet("http://myexternalip.com/raw").content.decode("utf-8").strip(' \t\n\r')
 		respond(string["from"]["id"], ipadres)
 		
+	elif allin(message, ["aan", "bureaulamp"]):
+		respond(string["from"]["id"], "Bureaulamp wordt aangezet" )
+		bericht(httpGet("http://192.168.178.50:1208?bureaulamp:aan").url)
+				
+	elif allin(message, ["uit", "bureaulamp"]):
+		respond(string["from"]["id"], "Bureaulamp wordt uitgezet" )
+		bericht(httpGet("http://192.168.178.50:1208?bureaulamp:uit").url)
+		
 	elif	 message == "bureau aan":
 		respond(string["from"]["id"], "Bureau en printer worden aangezet" )
-		bericht(httpGet("http://192.168.178.100:1208?bureau:aan").url)
+		bericht(httpGet("http://192.168.178.50:1208?bureau:aan").url)
 
 	elif	 message == "bureau uit":
 		respond(string["from"]["id"], "Bureau en printer worden uitgezet" )
-		bericht(httpGet("http://192.168.178.100:1208?bureau:uit").url)
+		bericht(httpGet("http://192.168.178.50:1208?bureau:uit").url)
 		
 	elif message[:4] == "ping":
 		respond(string["from"]["id"], "pong" )
@@ -135,7 +182,9 @@ lastUpdateId = 0
 try:
 	udp = udpinit()
 	offset = 0
-	url = "https://api.telegram.org/bot%s/getUpdates"%tgAPIcode 
+	url = "https://api.telegram.org/bot%s/getUpdates"%tgAPIcode
+	
+	sproeier = stopcontact()
 	
 	while (True):		
 		payload = 'offset=%s'%offset
@@ -170,6 +219,8 @@ try:
 		time.sleep(1)						# om processor te ontlasten
 			
 except KeyboardInterrupt:
+	sproeier.thread.cancel()
+	
 # , RuntimeError, TypeError, NameError, ValueError):
 	print(time.strftime("%a om %H:%M:%S")+ " Shutting down...")
 	print("Done, bye bye...")

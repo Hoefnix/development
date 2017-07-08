@@ -173,6 +173,14 @@ try:
 								telegramMsg(element[search]["from"]["id"], "Bureau en printer worden uitgezet" )
 								bericht(httpGet("http://192.168.178.100:1208?bureau:uit").url)
 		
+						elif	 message == "sproeier aan":
+							telegramMsg(element[search]["from"]["id"], "Sproeier wordt aangezet" )
+							bericht(httpGet("http://192.168.178.100:1208?aan:2").url)
+							
+						elif	 message == "sproeier uit":
+							telegramMsg(element[search]["from"]["id"], "Sproeier wordt uitgezet" )
+							bericht(httpGet("http://192.168.178.100:1208?uit:2").url)		
+		
 						elif allin(message, ['licht', 'aan', 'keuken']):
 							if (socket.gethostname().lower() == "serverpi"):
 								telegramMsg(element[search]["from"]["id"], "Licht in de keuken wordt aangezet" )
