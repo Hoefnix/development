@@ -136,25 +136,24 @@ def maakfoto(wdth=512,hght=512,iso=200):
 		vorigefoto = time.time()
 		
 		timeout = "-t 350" if iso <= 200 else "-t 1 -ss 30000"
-		
-		if licht.lichtsterkte < 75:
-			bericht ("(%s) Flits..."%licht.lichtsterkte)
-			GPIO.output(led1, 1)
-			GPIO.output(led2, 1)
+		if not deurisopen():				
+			if licht.lichtsterkte < 75:
+				bericht ("(%s) Flits..."%licht.lichtsterkte)
+				GPIO.output(led1, 1)
+				GPIO.output(led2, 1)
 			
-		subprocess.call("raspistill --nopreview -w %s -h %s -ISO  %s -e jpg -q 15 %s -o %s" % (wdth, hght, iso, timeout, fullname), shell=True)
+			subprocess.call("raspistill --nopreview -w %s -h %s -ISO  %s -e jpg -q 15 %s -o %s" % (wdth, hght, iso, timeout, fullname), shell=True)
 
-		GPIO.output(led1, 0)
-		GPIO.output(led2, 0)
+			GPIO.output(led1, 0)
+			GPIO.output(led2, 0)
 		
-		if not deurisopen():		
 			telegram(luikChat, image = fullname)
-		else:
-			bericht ("%s niet verzonden, deur is open"%fullname)
-	else:
-		bericht ("%s niet verzonden, te snel na elkaar"%fullname)
+#		else:
+#			bericht ("%s niet verzonden, deur is open"%fullname)
+#	else:
+#		bericht ("%s niet verzonden, te snel na elkaar"%fullname)
 
-	# daarna de oude fotos wegwerken
+	# de oude fotos wegwerken
 	filelist = glob.glob("%s/kl*.jpg" % filepath)
 	for f in filelist:
 		os.remove(f)
@@ -170,7 +169,6 @@ def deurisopen():
                 
 	if (resultaat.status_code == requests.codes.ok):
 		opendeur = int( resultaat.json()["keukendeur"] )
-		
 	return opendeur
 	
 # Capture a small test image (for motion detection)

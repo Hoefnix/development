@@ -577,6 +577,11 @@ class myHandler(BaseHTTPRequestHandler):
 			
 		elif command.startswith("keukendeur"):
 			if command.endswith(("open","dicht")):
+				if keuken.deur == 1 and command.endswith("dicht"):
+					pushover("Keukendeur gaat nu dicht")
+				else:
+					pushover("Keukendeur gaat nu open")
+					
 				keuken.deur = 1 if command.endswith("open") else 0
 			self.respond( "{\"value\":%s}"%keuken.deur )
 			
