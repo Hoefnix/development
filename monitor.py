@@ -276,7 +276,7 @@ try:
 				temperatuur = json.loads(jsonstr.strip())["temperatuur"]
 				if int(temperatuur) in range(-20,50): # simpel error checking, is de waarde is tussen -19 en 49
 					try:
-						requests.get("http://192.168.178.120:1208?tuinhuisupdate:%s"%temperatuur, timeout=5)
+						requests.get("http://192.168.178.50:1208?tuinhuisupdate:%s"%temperatuur, timeout=5)
 					except requests.Timeout:				
 						print("\033[3m%s\033[0m - serverPi timed out bij temperatuur update"%time.strftime("%H:%M:%S"))
 					except:				
@@ -310,8 +310,8 @@ try:
 				nachtlicht() if (openofdicht == 1) else None	#lampje in de keuken aan doen
 				if (openofdicht != huisstatus["keukendeur"]):
 					opendicht = "open" if (openofdicht == 1) else "dicht"
-					requests.get("http://192.168.178.120:1208?keukendeur:%s"%opendicht)
-					huisstatus["keukendeur"] = openofdicht
+					requests.get("http://192.168.178.50:1208?keukendeur:%s"%opendicht)
+					huisstatus["keukendeur"] = openofdicht					
 					with open("/var/tmp/huisstatus.json", "w") as bestand:
 						bestand.write( json.dumps( huisstatus ))			
 					

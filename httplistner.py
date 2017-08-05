@@ -191,7 +191,7 @@ class Tuinhuis(object):
 			if not empty(resultaat.text):
 				self.aanuit = json.loads( resultaat.text )["aanuit"]
 		return self.aanuit
-
+		
 	def check(self):
 		self.thread = threading.Timer(self.interval, self.check)
 		self.thread.start()
@@ -199,7 +199,7 @@ class Tuinhuis(object):
 		resultaat = httpGet("http://192.168.178.21/status", 4, "Tuinhuis: ")
 		if (resultaat.status_code == requests.codes.ok):
 			self.aanuit = resultaat.json()["aanuit"]
-			self.deur 	= resultaat.json()["deur"]
+			self.deur 	= resultaat.json()["deur"]			
 			bericht("%s, %s"%( int(resultaat.json()["temperatuur"]),int(self.temperatuur)))
 			if not int(resultaat.json()["temperatuur"]) is int(self.temperatuur):
 				self.temperatuur = resultaat.json()["temperatuur"]
@@ -208,7 +208,8 @@ class Tuinhuis(object):
 			if not self.bereikbaar:
 				self.bereikbaar = True
 		elif self.bereikbaar:
-			self.bereikbaar = False 	
+			self.bereikbaar = False
+		httpGet("http://127.0.0.1:51828/?accessoryId=schuurdeur&state=%s"%("true" if self.deur == 0 else "false"))
 		return self.aanuit
 		
 	def stop(self):
@@ -276,7 +277,7 @@ class woonkamerinit(object):
 		self.staandelamp = 0
 		self.ledstrip = 0
 		self.aanuit = 0
-		self.lichtaan = zononder()-3600
+		self.lichtaan = zononder()-5400
 		self.lichtuit = self.uittijd()
 		
 	def uittijd(self):
@@ -319,7 +320,7 @@ class woonkamerinit(object):
 		
 	def automatisch(self):
 		if time.time() > self.lichtaan:
-			if keuken.licht < 100 and self.aanuit == 0:
+			if keuken.licht < 90 and self.aanuit == 0:
 				if self.schakel("aan"):
 					bericht("Woonkamerlicht automatisch aan (%s)"%keuken.licht, viaPushover = True)
 		elif time.time() > self.lichtuit:
@@ -392,6 +393,14 @@ class keukeninit(object):
 			if not empty(resultaat.text):
 				self.stopcontact = int(resultaat.json()["aanuit2"])
 		return self.stopcontact
+		
+	def opendicht(self, opendicht):
+		bericht("keukendeur is %s wordt %s"%(self.deur, opendicht))
+		if opendicht == 0 or opendicht == 1:
+#			if self.deur != opendicht:
+#				pushover("Keukendeur gaat nu %s"%("open" if opendicht == 1 else "dicht"))
+			self.deur = opendicht
+		httpGet("http://127.0.0.1:51828/?accessoryId=achterdeur&state=%s"%("true" if self.deur == 0 else "false"))
 
 	def check(self):
 		self.thread = threading.Timer(self.interval, self.check)
@@ -400,9 +409,9 @@ class keukeninit(object):
 		resultaat = httpGet("http://192.168.178.203")
 		if (resultaat.status_code == requests.codes.ok):
 			if not empty(resultaat.text):
-				self.verlichting	= int(resultaat.json()["aanuit1"])
-				self.deur			= int(resultaat.json()["keukendeur"])				
-				self.stopcontact	= int(resultaat.json()["aanuit2"])
+				self.verlichting	= int(resultaat.json()[   "aanuit1"])
+				self.stopcontact	= int(resultaat.json()[   "aanuit2"])
+				self.opendicht(int(resultaat.json()["keukendeur"]))			
 				bericht("keukendeur is %s"%self.deur)
 
 #		resultaat = httpGet("http://192.168.178.50/lichtsterkte.json")
@@ -577,13 +586,11 @@ class myHandler(BaseHTTPRequestHandler):
 			
 		elif command.startswith("keukendeur"):
 			if command.endswith(("open","dicht")):
-				if keuken.deur == 1 and command.endswith("dicht"):
-					pushover("Keukendeur gaat nu dicht")
-				else:
-					pushover("Keukendeur gaat nu open")
-					
-				keuken.deur = 1 if command.endswith("open") else 0
+				keuken.opendicht(1 if command.endswith("open") else 0)
 			self.respond( "{\"value\":%s}"%keuken.deur )
+			
+		elif command.startswith("achterdeur"):
+			self.respond( "%s"%keuken.deur )
 			
 		elif command.startswith("lux"):
 			self.respond( "{\"lightlevel\":%s}"%(keuken.licht*10) )
@@ -706,7 +713,7 @@ class myHandler(BaseHTTPRequestHandler):
 			#self.respond("%s"%duplicator.aanuit)
 			self.respond("0")
 			
-		elif command.startswith("duplilamp"):
+		elif command.startswith("duplilicht"):
 			#if command.endswith(("aan","uit","flp")):
 				#duplilicht.schakel(command[-3:]) 
 			#self.respond("%s"%duplilicht.aanuit)

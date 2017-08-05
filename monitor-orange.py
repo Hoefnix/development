@@ -115,7 +115,7 @@ class tuinhuis:
 				tekst = "open" if (openofdicht == 1) else "dicht"
 				telegramMsg ("12463680", "Tuinhuisdeur is %s"%tekst) # laat het de wereld weten
 				try:
-					requests.get("http://127.0.0.1:1208?schuurdeur:%s"%tekst, timeout=2)	# update de status in homebridge
+					requests.get("http://192.168.178.100:1208?schuurdeur:%s"%tekst, timeout=2)	# update de status in homebridge
 				except:				
 					print("\033[3m%s\033[0m - probleem bij deurstatus update"%time.strftime("%H:%M:%S"))
 				self.laatstestatus = openofdicht	# update de status voor de volgende controle
@@ -242,7 +242,7 @@ try:
 				temperatuur = json.loads(jsonstr.strip())["temperatuur"]
 				if int(temperatuur) in range(-20,50): # simpel error checking, is de waarde is tussen -19 en 49
 					try:
-						r=requests.get("http://127.0.0.1:1208?tuinhuisupdate:%s"%temperatuur, timeout=2)
+						r=requests.get("http://192.168.178.50:1208?tuinhuisupdate:%s"%temperatuur, timeout=5)
 						bericht(r.text)
 					except requests.Timeout:				
 						bericht("Time-out bij temperatuur update")
@@ -263,15 +263,19 @@ try:
 				openofdicht = int(json.loads(jsonstr.strip())["keukendeur"])
 				nachtlicht() if (openofdicht == 1) else None	#lampje in de keuken aan doen
 				if (openofdicht != huisstatus["keukendeur"]):
-					opendicht = "open" if (openofdicht == 1) else "dicht"						
+					opendicht = "open" if (openofdicht == 1) else "dicht"
 					try:
-						requests.get("http://127.0.0.1:1208?keukendeur:%s"%opendicht, timeout=2)
+						requests.get("http://192.168.178.50:1208?keukendeur:%s"%opendicht, timeout=1)
 					except requests.Timeout:				
-						bericht("Time-out bij update deurstatus")
+						bericht("Time-out bij update deurstatus (192.168.178.50)")
 					except:				
 						bericht("Fout bij update deurstatus")
 
 					huisstatus["keukendeur"] = openofdicht
+
+					opendicht = "true" if openofdicht == 0 else "false"
+					requests.get("http://127.0.0.1:51828/?accessoryId=achterdeur&state=%s"%opendicht)
+
 					bericht(huisstatus["keukendeur"])
 					
 			elif "alarmsysteem" in jsonstr and "reset" in jsonstr:
@@ -283,4 +287,5 @@ try:
 except (KeyboardInterrupt):#, RuntimeError, TypeError, NameError, ValueError):
 	bericht (time.strftime("%a om %H:%M:%S")+ " Restarting...")
 	sock.close()
-	subprocess.call("screen -dmLS monitor sudo python3 %s"%__file__, shell=True)
+	subprocess.call("screen -dmLS monitor python3 %s"%__file__, shell=True)
+	
