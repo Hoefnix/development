@@ -397,9 +397,8 @@ class keukeninit(object):
 	def opendicht(self, opendicht):
 		bericht("keukendeur is %s wordt %s"%(self.deur, opendicht))
 		if opendicht == 0 or opendicht == 1:
-#			if self.deur != opendicht:
-#				pushover("Keukendeur gaat nu %s"%("open" if opendicht == 1 else "dicht"))
 			self.deur = opendicht
+#		update de webhook module
 		httpGet("http://127.0.0.1:51828/?accessoryId=achterdeur&state=%s"%("true" if self.deur == 0 else "false"))
 
 	def check(self):
@@ -409,8 +408,8 @@ class keukeninit(object):
 		resultaat = httpGet("http://192.168.178.203")
 		if (resultaat.status_code == requests.codes.ok):
 			if not empty(resultaat.text):
-				self.verlichting	= int(resultaat.json()[   "aanuit1"])
-				self.stopcontact	= int(resultaat.json()[   "aanuit2"])
+				self.verlichting	= int(resultaat.json()["aanuit1"])
+				self.stopcontact	= int(resultaat.json()["aanuit2"])
 				self.opendicht(int(resultaat.json()["keukendeur"]))			
 				bericht("keukendeur is %s"%self.deur)
 
@@ -474,18 +473,8 @@ def getstatus():
 	
 	thread = threading.Timer(randint(275,325), getstatus)
 	thread.start()
-	
-	#bureaulamp.check()
-	#gevellamp.check()
+
 	woonkamer.check()
-	#tuinhuis.check()
-	# keuken.check()
-	# alarmsysteem.check()
-	
-	#	Leanne's kamer, temperatuur
-	#resultaat = httpGet("http://192.168.178.211?temperatuur")
-	#if (resultaat.status_code == requests.codes.ok):
-		#sensoren["leannetemp"] = resultaat.text
 
 	#	Bureau
 	resultaat = httpGet("http://192.168.178.210/status")
@@ -509,11 +498,6 @@ def getstatus():
 			sensoren[ "geveltemp"] = 0 if empty(resultaat.json()["buiten"]) else resultaat.json()["buiten"]
 		else:
 			bericht("Response sensoren bij bureau (192.168.178.202) is leeg")
-
-	#	Leanne's kamer, schakelaar
-	#resultaat = httpGet("http://192.168.178.211?status")
-	#if (resultaat.status_code == requests.codes.ok):
-		#schakelaars["leanne"] = resultaat.text[-1:]
 
 	woonkamer.automatisch()
 	
@@ -587,7 +571,7 @@ class myHandler(BaseHTTPRequestHandler):
 		elif command.startswith("keukendeur"):
 			if command.endswith(("open","dicht")):
 				keuken.opendicht(1 if command.endswith("open") else 0)
-			self.respond( "{\"value\":%s}"%keuken.deur )
+			self.respond( "{\"value\":%s}"%keuken.deur)
 			
 		elif command.startswith("achterdeur"):
 			self.respond( "%s"%keuken.deur )
@@ -760,7 +744,7 @@ try:
 
 	gevellamp	 = aanuit("http://192.168.178.208?gpio0")
 	bureaulamp	 = aanuit("http://192.168.178.34:1964?bureaulamp")
-	badkamer		 = Badkamer()
+	badkamer	 = Badkamer()
 	alarmsysteem = woonveilig()
 	duplicator	 = octoprint()
 	woonkamer 	 = woonkamerinit()
