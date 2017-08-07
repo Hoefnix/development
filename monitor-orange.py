@@ -14,6 +14,7 @@ import subprocess
 import time
 import ephem
 import random
+import threading
 
 geluidpin =  4
 deurblpin = 24
@@ -65,10 +66,14 @@ def nachtlicht(iplamp = "http://192.168.178.203"):
 	if nacht():
 		if (int(json.loads(requests.get(iplamp).text)["aanuit1"]) == 0):
 			print("We gaan schakelen")
-			with open('/var/tmp/ledstrip.sh', 'w') as script:			
-				script.write("curl -m1 -ss %s?aan:1 > /dev/null 2>&1\nsleep 60\ncurl -m1 -ss %s?uit:1 > /dev/null 2>&1\n"%(iplamp,iplamp))
-			os.chmod("/var/tmp/ledstrip.sh", 775)
-			subprocess.call("/var/tmp/ledstrip.sh & > /dev/null 2>&1", shell=True)
+			thread = threading.Timer(60, requests.get, ["%s?uit:1"%iplamp])
+			thread.start()
+			requests.get("%s?aan:1"%iplamp)
+			
+#			with open('/var/tmp/ledstrip.sh', 'w') as script:			
+#				script.write("curl -m1 -ss %s?aan:1 > /dev/null 2>&1\nsleep 60\ncurl -m1 -ss %s?uit:1 > /dev/null 2>&1\n"%(iplamp,iplamp))
+#			os.chmod("/var/tmp/ledstrip.sh", 775)
+#			subprocess.call("/var/tmp/ledstrip.sh & > /dev/null 2>&1", shell=True)
 		else:
 			print("al aan, we doen niks")
 	return
@@ -153,6 +158,7 @@ class arpscanner:
 	def scan(self):
 		if ((time.time() - self.vorigecontrole) > self.interval):
 			self.vorigecontrole = time.time()
+			bericht("arp-scan wordt gestart...")
 			p = subprocess.Popen('sudo /usr/bin/arp-scan -q --interface=eth0 192.168.178.0/24', shell=True, stdout=subprocess.PIPE)
 			# zet alle gevonden devices in dictionary
 			self.devices = {}
@@ -194,7 +200,7 @@ class udpinit(object):
 #			bericht("Sending: %s\n"%message)
 			self.s.sendto(bytes(message,"UTF-8"),('<broadcast>',self.port))
 			
-bericht("Gestart\n%s"%__file__, viaPushover = True)
+bericht("%s gestart\n"%__file__, viaPushover = True)
 
 tuinhuisdeur = tuinhuis()
 arp = arpscanner(300)
