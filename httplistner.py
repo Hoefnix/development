@@ -186,7 +186,7 @@ class Tuinhuis(object):
 	def schakel(self, aanofuit):
 		if aanofuit == "flp":
 			aanofuit = "uit" if self.aanuit == 1 else "aan" 
-		resultaat = httpGet("http://192.168.178.21/%s"%aanofuit, 3, "Tuinhuis: ")
+		resultaat = httpGet("http://192.168.178.206/%s"%aanofuit, 3, "Tuinhuis: ")
 		if (resultaat.status_code == requests.codes.ok):
 			if not empty(resultaat.text):
 				self.aanuit = json.loads( resultaat.text )["aanuit"]
@@ -196,7 +196,7 @@ class Tuinhuis(object):
 		self.thread = threading.Timer(self.interval, self.check)
 		self.thread.start()
 		
-		resultaat = httpGet("http://192.168.178.21/status", 4, "Tuinhuis: ")
+		resultaat = httpGet("http://192.168.178.206/status", 4, "Tuinhuis: ")
 		if (resultaat.status_code == requests.codes.ok):
 			self.aanuit = resultaat.json()["aanuit"]
 			self.deur 	= resultaat.json()["deur"]			

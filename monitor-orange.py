@@ -65,15 +65,9 @@ def tgSendPhoto( chat_id="12463680", imagePath="" ):
 def nachtlicht(iplamp = "http://192.168.178.203"):
 	if nacht():
 		if (int(json.loads(requests.get(iplamp).text)["aanuit1"]) == 0):
-			print("We gaan schakelen")
-			thread = threading.Timer(60, requests.get, ["%s?uit:1"%iplamp])
-			thread.start()
-			requests.get("%s?aan:1"%iplamp)
-			
-#			with open('/var/tmp/ledstrip.sh', 'w') as script:			
-#				script.write("curl -m1 -ss %s?aan:1 > /dev/null 2>&1\nsleep 60\ncurl -m1 -ss %s?uit:1 > /dev/null 2>&1\n"%(iplamp,iplamp))
-#			os.chmod("/var/tmp/ledstrip.sh", 775)
-#			subprocess.call("/var/tmp/ledstrip.sh & > /dev/null 2>&1", shell=True)
+			# start een timer thread om de lamp na x seconden weer uit te zetten
+			threading.Timer(120, requests.get, ["%s?uit:1"%iplamp]).start()
+			requests.get("%s?aan:1"%iplamp) # zet de lamp aan
 		else:
 			print("al aan, we doen niks")
 	return
@@ -120,7 +114,7 @@ class tuinhuis:
 				tekst = "open" if (openofdicht == 1) else "dicht"
 				telegramMsg ("12463680", "Tuinhuisdeur is %s"%tekst) # laat het de wereld weten
 				try:
-					requests.get("http://192.168.178.100:1208?schuurdeur:%s"%tekst, timeout=2)	# update de status in homebridge
+					requests.get("http://192.168.178.50:1208?schuurdeur:%s"%tekst, timeout=2)	# update de status in homebridge
 				except:				
 					print("\033[3m%s\033[0m - probleem bij deurstatus update"%time.strftime("%H:%M:%S"))
 				self.laatstestatus = openofdicht	# update de status voor de volgende controle
@@ -205,8 +199,6 @@ bericht("%s gestart\n"%__file__, viaPushover = True)
 tuinhuisdeur = tuinhuis()
 arp = arpscanner(300)
 
-#licht = udpinit(seconden=120)
-
 try:
 	startijd = time.time()
 	huisstatus = {"keukendeur":0}
@@ -266,7 +258,11 @@ try:
 				telegramMsg(Johannes_Smits, "Deurbel")
 								
 			elif "keukendeur" in jsonstr:
-				openofdicht = int(json.loads(jsonstr.strip())["keukendeur"])
+				try:
+					openofdicht = int(json.loads(jsonstr.strip())["keukendeur"])
+				except:
+					continue
+					
 				nachtlicht() if (openofdicht == 1) else None	#lampje in de keuken aan doen
 				if (openofdicht != huisstatus["keukendeur"]):
 					opendicht = "open" if (openofdicht == 1) else "dicht"
