@@ -73,8 +73,8 @@ class octoprint():
 		self.thread.cancel()
 
 	
-def thingspeak(veld="field6",waarde=None):
-	bericht("Thingspeak update: %s = %s"%(veld,waarde))
+def thingspeak(veld="field6",waarde=None, omschrijving = ""):
+	bericht("Thingspeak update %s, %s = %s"%(omschrijving, veld, waarde))
 
 	if not waarde is None:
 		httpGet("https://api.thingspeak.com/update?key=0Y0TM8Y14DTM54P1&%s=%s"%(veld, waarde))
@@ -200,11 +200,11 @@ class Tuinhuis(object):
 		if (resultaat.status_code == requests.codes.ok):
 			self.aanuit = resultaat.json()["aanuit"]
 			self.deur 	= resultaat.json()["deur"]			
-			bericht("%s, %s"%( int(resultaat.json()["temperatuur"]),int(self.temperatuur)))
+#			bericht("Temperatuur was %s, is nu %s"%( int(resultaat.json()["temperatuur"]),int(self.temperatuur)))
 			if not int(resultaat.json()["temperatuur"]) is int(self.temperatuur):
 				self.temperatuur = resultaat.json()["temperatuur"]
 				if self.temperatuur > -127:
-					thingspeak("field6", self.temperatuur)					
+					thingspeak("field6", self.temperatuur, "temperatuur tuinhuis")					
 			if not self.bereikbaar:
 				self.bereikbaar = True
 		elif self.bereikbaar:
@@ -425,7 +425,7 @@ class keukeninit(object):
 			if not empty(resultaat.text):
 				if not int(resultaat.json()["licht"]) is self.licht:
 					self.licht = int(resultaat.json()["licht"])
-					thingspeak("field1", self.licht)			
+					thingspeak("field1", self.licht, "lichtsterkte")			
 		return
 		
 	def stop(self):
