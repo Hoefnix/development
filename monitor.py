@@ -158,7 +158,7 @@ class tuinhuis:
 				tekst = "open" if (openofdicht == 1) else "dicht"
 				telegramMsg ("12463680", "Tuinhuisdeur is %s"%tekst) # laat het de wereld weten
 				try:
-					requests.get("http://192.168.178.100:1208?schuurdeur:%s"%tekst, timeout=2)	# update de status in homebridge
+					requests.get("http://192.168.178.50:1208?schuurdeur:%s"%tekst, timeout=2)	# update de status in homebridge
 				except:				
 					print("\033[3m%s\033[0m - probleem bij deurstatus update"%time.strftime("%H:%M:%S"))
 				self.laatstestatus = openofdicht	# update de status voor de volgende controle
