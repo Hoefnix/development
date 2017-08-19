@@ -15,22 +15,6 @@ luikChat = "-12086796"
 vorigefoto = time.time()
 UDP_PORT = 5005
 
-def night():
-	# where am i 
-	o = ephem.Observer()
-	o.lat  = '51.916905'
-	o.long =  '4.563472'
-		
-	# define sun as object of interest
-	s = ephem.Sun()
-	sunrise = o.next_rising(s)
-	sunset  = o.next_setting(s)
-
-	sr_next = ephem.localtime(sunrise)
-	ss_next = ephem.localtime(sunset)		
-
-	return 1 if (sr_next < ss_next) else 0
-
 def telegram( chat_id="-12086796", message = None, image = None ):
 	if not message is None:
 		url = "https://api.telegram.org/bot328955454:AAEmupBEwE0D7V1vsoB8Xo5YY1wGIFpu6AE/sendMessage"
@@ -80,25 +64,23 @@ try:
 			
 			if "kattenluik" in data:
 				bericht ( "%s %s"%(data, addr) )
-				#if night():	# 's-nachts overslaan, in het donker toch geen zin
-					#continue
 					
-			if data == '{"kattenluik":1}':	
+			if data == '{"kattenluik":1}':
 				if (time.time() - vorigefoto) > 7: # zit er x seconden tussen ?
 					subprocess.call("/usr/bin/fswebcam -c /home/osmc/catcam.cfg", shell=True)
+					bericht("foto verzonden")
 					vorigefoto = time.time()
-					#telegram(luikChat, image = "/var/tmp/catcam.jpg")
 				else:
-					bericht ("foto niet verzonden, te snel na elkaar")
+					bericht ("foto niet verzonden, te snel na elkaar (v:%s, n:%s)"%(vorigefoto,time.time()))
 				continue
 
 			elif data == '{"kattenluik":"foto"}':	
 				if (time.time() - vorigefoto) > 7: # zit er x seconden tussen ?
 					subprocess.call("/usr/bin/fswebcam -c /home/osmc/catcam.cfg", shell=True)
+					bericht("foto verzonden" )
 					vorigefoto = time.time()
-					#telegram(luikChat, image = "/var/tmp/catcam.jpg")
 				else:
-					bericht ("foto niet verzonden, te snel na elkaar")
+					bericht ("foto niet verzonden, te snel na elkaar (v:%s, n:%s)"%(vorigefoto,time.time()))
 				continue
 
 		except socket.timeout:

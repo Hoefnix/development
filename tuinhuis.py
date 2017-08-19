@@ -75,35 +75,26 @@ def telegram( chat_id="12463680", message = None, image = None ):
 		r = requests.post(url, data=data, files=files)
 		return (r.json()["ok"])
 		
-class temperatuur(object):
+class ds18b20(object):
 	def __init__(self):
 		self.file = "/sys/bus/w1/devices/28-800000036068/w1_slave"
-		self.interval = randint(275,325)		
 		self.temperatuur = 0
-		self.check()
-	
+			
 	def check(self):
-		self.thread = threading.Timer(self.interval, self.check)
-		self.thread.start()
 		try:
 			with open(self.file, 'r') as content_file:
 				content = content_file.read()
 			self.temperatuur = int(content[content.find("t=")+2:])/1000
 		except:
-			bericht("fout bij ophalen temperatuur")
+			bericht("Fout bij ophalen temperatuur")
 
-		bericht(self.temperatuur)
 		return self.temperatuur
 
-	def stop(self):
-		bericht("Temperatuur check wordt gestopt...")
-		self.thread.cancel()
-	
-	
 class aanuit(object):
 	def __init__(self, pin):
 		self.aanuit = 0
 		self.gpio = pin
+		gpio.setcfg(self.gpio, gpio.OUTPUT)	# Configure for use with relais
 		self.interval = randint(275,325)		
 		self.check()
 		bericht("GPIO(%s) is gereed, waarde is %s"%(self.gpio, self.aanuit))
@@ -112,10 +103,11 @@ class aanuit(object):
 		if aanofuit == "flp":
 			aanofuit = "uit" if self.aanuit == 1 else "aan"
 			
-		if (self.aanuit == 1 and aanofuit == "uit") or (self.aanuit == 0 and aanofuit == "aan"):
-			bericht("GPIO%s was %s wordt %s"%(self.gpio, self.aanuit, aanofuit))
-			gpio.output(self.gpio, abs(self.aanuit-1))
-			self.aanuit = gpio.input(self.gpio)
+		self.aanuit = gpio.HIGH if aanofuit == "aan" else gpio.LOW
+		bericht("GPIO%s is %s wordt %s (%s)"%(self.gpio, gpio.input(self.gpio), self.aanuit, aanofuit))
+
+		gpio.output(self.gpio, self.aanuit)
+		self.aanuit = gpio.input(self.gpio) # doublecheck
 		return self.aanuit
 
 	def check(self):
@@ -132,6 +124,7 @@ class deursensor(object):
 	def __init__(self, pin):
 		self.interval = 2
 		self.gpio = pin
+		gpio.setcfg(self.gpio, gpio.INPUT)	# Configure for deursensor
 		self.waarde = gpio.input(self.gpio)	
 		self.check()
 		bericht("Object is gereed, waarde is %s"%(self.waarde))
@@ -139,7 +132,7 @@ class deursensor(object):
 	def check(self):
 		self.thread = threading.Timer(self.interval, self.check)
 		self.thread.start()
-		self.waarde = gpio.input(self.gpio)
+		
 		if self.waarde != gpio.input(self.gpio):
 			self.waarde = gpio.input(self.gpio)
 			tekst = "open" if (self.waarde == 1) else "dicht"
@@ -190,6 +183,12 @@ class myHandler(BaseHTTPRequestHandler):
 			if command.endswith(("aan","uit","flp")):
 				licht.schakel(command[-3:])
 			self.respond("%s"%licht.aanuit)
+			
+		elif command.startswith("deur"):
+			self.respond("%s"%deur.waarde)
+
+		elif command.startswith("temperatuur"):
+			self.respond("%s"%temperatuur.check())
 
 		else:
 			bericht( "Opdracht niet begrepen: %s"%command)				
@@ -197,16 +196,13 @@ class myHandler(BaseHTTPRequestHandler):
 		return
 
 gpio.init() #Initialize module. Always called first
-
-gpio.setcfg(11, gpio.INPUT)	# Configure GPIO11 as input Deur
-gpio.setcfg(10, gpio.INPUT)	# Configure GPIO10 as input DS18B20
-gpio.setcfg( 6, gpio.OUTPUT)	# Configure GPIO06 as relais
+#gpio.setcfg(10, gpio.INPUT)	# Configure GPIO10 as input DS18B20
 
 bericht("Gestart op de %s"%os.uname()[1],viaPushover=True)
 try:
 	deur	= deursensor(11)	#	reed-schakelaar op GPIO11
-	licht	= aanuit(6)	#	relais voor verlichting op GPIO6
-	ds18b20	= temperatuur() 
+	licht	= aanuit(port.PA14)	#	relais voor verlichting
+	temperatuur	= ds18b20() 
 	
 #	-------
 	server = HTTPServer(('', 1208), myHandler)
@@ -217,6 +213,5 @@ except KeyboardInterrupt:
 	bericht ('ctrl-C ontvangen, tuinhuis wordt gestopt')
 	deur.stop()
 	licht.stop()
-	ds18b20.stop()
 	
-	subprocess.call("/usr/bin/screen -dmLS tuinhuis python3 %s"%__file__, shell=True)
+	subprocess.call("/usr/bin/screen -dmLS tuinhuis sudo python3 %s"%__file__, shell=True)
