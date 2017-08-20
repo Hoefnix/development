@@ -54,8 +54,14 @@ class octoprint():
 		self.thread = threading.Timer(self.interval, self.check)
 		self.thread.start()
 
+		self.hotend = 0
+		self.bed = 0
+		self.operational = False
+		self.printing = 0
+		self.percentage = 0
+
 		self.resultaat = requests.get('http://192.168.178.125:5000/api/printer', headers=self.apikey)
-#		bericht("octoprint (printer) %s"%(self.resultaat.text))
+		bericht("octoprint (printer) %s"%(self.resultaat.text))
 		if "not operational" not in self.resultaat.text:
 			self.bed = float(self.resultaat.json()["temperature"]["bed"]["actual"])
 			self.hotend = int(float(self.resultaat.json()["temperature"]["tool0"]["actual"])/10)
@@ -63,11 +69,9 @@ class octoprint():
 			self.printing = "1" if self.resultaat.json()["state"]["flags"]["printing"] else "0"
 		
 			self.resultaat = requests.get('http://192.168.178.125:5000/api/job', headers=self.apikey)
-#			bericht("octoprint (job) %s"%self.resultaat.text)
-			#self.percentage = self.resultaat.json()["job"]["progress"]["completion"]
 			bericht("%s\n"%int(float(self.resultaat.json()["progress"]["completion"])))
 			self.percentage = int(float(self.resultaat.json()["progress"]["completion"]))
-		
+				
 	def stop(self):
 		bericht("Octoprint wordt gestopt...")
 		self.thread.cancel()
