@@ -188,12 +188,9 @@ class Tuinhuis(object):
 		self.check()
 
 	def schakel(self, aanofuit):
-		if aanofuit == "flp":
-			aanofuit = "uit" if self.aanuit == 1 else "aan" 
-		resultaat = httpGet("http://192.168.178.206/%s"%aanofuit, 3, "Tuinhuis: ")
+		resultaat = httpGet("http://192.168.178.70:1208?schakelaar:%s"%aanofuit, 4, "Tuinhuis: ")
 		if (resultaat.status_code == requests.codes.ok):
-			if not empty(resultaat.text):
-				self.aanuit = json.loads( resultaat.text )["aanuit"]
+			self.aanuit = resultaat.json()["schakelaar"]	
 		return self.aanuit
 		
 	def check(self):
@@ -204,7 +201,6 @@ class Tuinhuis(object):
 		if (resultaat.status_code == requests.codes.ok):
 			self.aanuit = resultaat.json()["aanuit"]
 			self.deur 	= resultaat.json()["deur"]			
-#			bericht("Temperatuur was %s, is nu %s"%( int(resultaat.json()["temperatuur"]),int(self.temperatuur)))
 			if not int(resultaat.json()["temperatuur"]) is int(self.temperatuur):
 				self.temperatuur = resultaat.json()["temperatuur"]
 				if self.temperatuur > -127:
@@ -214,6 +210,13 @@ class Tuinhuis(object):
 		elif self.bereikbaar:
 			self.bereikbaar = False
 		httpGet("http://127.0.0.1:51828/?accessoryId=schuurdeur&state=%s"%("true" if self.deur == 0 else "false"))
+
+		resultaat = httpGet("http://192.168.178.70:1208?temperatuur", 4, "Tuinhuis: ")
+		if (resultaat.status_code == requests.codes.ok):
+			self.temperatuur = resultaat.json()["temperatuur"]
+			if self.temperatuur > -127:
+				thingspeak("field6", self.temperatuur, "temperatuur tuinhuis")					
+		
 		return self.aanuit
 		
 	def stop(self):
@@ -748,7 +751,7 @@ try:
 
 	gevellamp	 = aanuit("http://192.168.178.208?gpio0")
 	bureaulamp	 = aanuit("http://192.168.178.34:1964?bureaulamp")
-	badkamer	 = Badkamer()
+	badkamer		 = Badkamer()
 	alarmsysteem = woonveilig()
 	duplicator	 = octoprint()
 	woonkamer 	 = woonkamerinit()

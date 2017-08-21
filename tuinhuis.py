@@ -78,17 +78,17 @@ def telegram( chat_id="12463680", message = None, image = None ):
 class ds18b20(object):
 	def __init__(self):
 		self.file = "/sys/bus/w1/devices/28-800000036068/w1_slave"
-		self.temperatuur = 0
+		self.waarde = 0
 			
 	def check(self):
 		try:
 			with open(self.file, 'r') as content_file:
 				content = content_file.read()
-			self.temperatuur = int(content[content.find("t=")+2:])/1000
+			self.waarde = int(content[content.find("t=")+2:])/1000
 		except:
 			bericht("Fout bij ophalen temperatuur")
 
-		return self.temperatuur
+		return self.waarde
 
 class aanuit(object):
 	def __init__(self, pin):
@@ -179,20 +179,19 @@ class myHandler(BaseHTTPRequestHandler):
 			self.respond("Status wordt bijgewerkt")
 			threading.Thread(target=getstatus).start()
 
-		elif command.startswith("licht"):
+		elif command.startswith("schakelaar"):
 			if command.endswith(("aan","uit","flp")):
-				licht.schakel(command[-3:])
-			self.respond("%s"%licht.aanuit)
+				schakelaar.schakel(command[-3:])
+			self.respond('{"schakelaar":%s}'%schakelaar.aanuit)
 			
 		elif command.startswith("deur"):
-			self.respond("%s"%deur.waarde)
+			self.respond('{"deur":%s}'%deur.waarde)
 
 		elif command.startswith("temperatuur"):
-			self.respond("%s"%temperatuur.check())
+			self.respond('{"temperatuur":%s}'%temperatuur.check())
 
 		else:
-			bericht( "Opdracht niet begrepen: %s"%command)				
-			self.respond("Opdracht niet begrepen: %s"%command)				
+			self.respond('{"temperatuur":%s,"deur":%s,"schakelaar":%s}'%(temperatuur.check(),deur.waarde,schakelaar.aanuit))
 		return
 
 gpio.init() #Initialize module. Always called first
@@ -201,7 +200,7 @@ gpio.init() #Initialize module. Always called first
 bericht("Gestart op de %s"%os.uname()[1],viaPushover=True)
 try:
 	deur	= deursensor(11)	#	reed-schakelaar op GPIO11
-	licht	= aanuit(port.PA14)	#	relais voor verlichting
+	schakelaar	= aanuit(port.PA14)	#	relais voor verlichting
 	temperatuur	= ds18b20() 
 	
 #	-------
@@ -212,6 +211,6 @@ try:
 except KeyboardInterrupt:
 	bericht ('ctrl-C ontvangen, tuinhuis wordt gestopt')
 	deur.stop()
-	licht.stop()
+	schakelaar.stop()
 	
 	subprocess.call("/usr/bin/screen -dmLS tuinhuis sudo python3 %s"%__file__, shell=True)
