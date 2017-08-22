@@ -183,7 +183,6 @@ class Tuinhuis(object):
 		self.temperatuur = 0
 		self.aanuit = 0
 		self.deur = 0
-		self.bereikbaar = False
 		self.interval = randint(275,325)
 		self.check()
 
@@ -197,18 +196,14 @@ class Tuinhuis(object):
 		self.thread = threading.Timer(self.interval, self.check)
 		self.thread.start()
 		
-		resultaat = httpGet("http://192.168.178.206/status", 4, "Tuinhuis: ")
+		resultaat = httpGet("http://192.168.178.70:1208", 4, "Tuinhuis: ")
 		if (resultaat.status_code == requests.codes.ok):
-			self.aanuit = resultaat.json()["aanuit"]
+			self.aanuit = resultaat.json()["schakelaar"]
 			self.deur 	= resultaat.json()["deur"]			
 			if not int(resultaat.json()["temperatuur"]) is int(self.temperatuur):
 				self.temperatuur = resultaat.json()["temperatuur"]
 				if self.temperatuur > -127:
 					thingspeak("field6", self.temperatuur, "temperatuur tuinhuis")					
-			if not self.bereikbaar:
-				self.bereikbaar = True
-		elif self.bereikbaar:
-			self.bereikbaar = False
 		httpGet("http://127.0.0.1:51828/?accessoryId=schuurdeur&state=%s"%("true" if self.deur == 0 else "false"))
 
 		resultaat = httpGet("http://192.168.178.70:1208?temperatuur", 4, "Tuinhuis: ")
@@ -278,7 +273,7 @@ class woonveilig(object):
 		bericht("Woonveilig check wordt gestopt...")
 		self.thread.cancel()
 
-class woonkamerinit(object):
+class Woonkamer(object):
 	def __init__(self):
 		self.temperatuur = 0
 		self.staandelamp = 0
@@ -300,17 +295,12 @@ class woonkamerinit(object):
 	def schakel(self, aanofuit):
 		if aanofuit == "flp":
 			aanofuit = "uit" if self.aanuit == 1 else "aan"
-		elif aanofuit.startswith("pir"):
-			if self.lichtaan < time.time() < self.lichtuit:
-				if aanofuit.endswith(("aan","uit")):
-					aanofuit = aanofuit[-3:]
-					bericht("PIR %s"%aanofuit)
-					
+
 		while (self.aanuit == 1 and aanofuit == "uit") or (self.aanuit == 0 and aanofuit == "aan"):		
 			resultaat = httpGet("http://192.168.178.201?%s"%aanofuit, 1)
-#			if (resultaat.status_code == requests.codes.ok):
-#				self.staandelamp	= 1 if resultaat.text == "aan" else 0
-#				bericht("staandelamp %s"%resultaat.text)
+			if (resultaat.status_code == requests.codes.ok):
+				self.staandelamp	= 1 if resultaat.text == "aan" else 0
+				bericht("staandelamp %s"%resultaat.text)
 			
 			resultaat = httpGet("http://192.168.178.204/aanuit=%s"%aanofuit, 1)
 			if (resultaat.status_code == requests.codes.ok):
@@ -321,8 +311,7 @@ class woonkamerinit(object):
 			if (resultaat.status_code == requests.codes.ok):
 				self.aanuit = int(resultaat.text)
 				
-			self.aanuit = self.aanuit * self.ledstrip # * self.staandelamp
-			
+			self.aanuit = self.aanuit * self.ledstrip * self.staandelamp
 		return self.aanuit
 		
 	def automatisch(self):
@@ -348,9 +337,9 @@ class woonkamerinit(object):
 	def check(self):
 
 		#	Staande lamp
-#		resultaat = httpGet("http://192.168.178.201/?status")
-#		if (resultaat.status_code == requests.codes.ok):
-#			self.staandelamp	= int(resultaat.text[-1])
+		resultaat = httpGet("http://192.168.178.201/?status")
+		if (resultaat.status_code == requests.codes.ok):
+			self.staandelamp = int(resultaat.text[-1])
 
 		#	Led strip
 		resultaat = httpGet("http://192.168.178.204")
@@ -365,13 +354,13 @@ class woonkamerinit(object):
 		#	Temperatuur
 		resultaat = httpGet("http://192.168.178.201/?temperatuur")
 		if (resultaat.status_code == requests.codes.ok):
-			self.temperatuur	= resultaat.text		
+			self.temperatuur = resultaat.text		
 
-		self.aanuit = self.aanuit * self.ledstrip # * self.staandelamp
+		self.aanuit = self.aanuit * self.ledstrip * self.staandelamp
 
 		return self.aanuit
 
-class keukeninit(object):
+class Keuken(object):
 	def __init__(self):
 		self.deur = 0
 		self.verlichting = 0
@@ -419,14 +408,14 @@ class keukeninit(object):
 				self.stopcontact	= int(resultaat.json()["aanuit2"])
 				self.opendicht(int(resultaat.json()["keukendeur"]))			
 				bericht("keukendeur is %s"%self.deur)
-
-#		resultaat = httpGet("http://192.168.178.50/lichtsterkte.json")
-#		if (resultaat.status_code == requests.codes.ok):
-#			if not empty(resultaat.text):
-#				if not int(resultaat.json()["licht"]) is self.licht:
-#					self.licht = int(resultaat.json()["licht"])
-#					thingspeak("field1", self.licht)		
-					
+		'''
+		resultaat = httpGet("http://192.168.178.50/lichtsterkte.json")
+		if (resultaat.status_code == requests.codes.ok):
+			if not empty(resultaat.text):
+				if not int(resultaat.json()["licht"]) is self.licht:
+					self.licht = int(resultaat.json()["licht"])
+					thingspeak("field1", self.licht)		
+		'''		
 		resultaat = httpGet("http://192.168.178.34:1964?lichtsterkte")
 		if (resultaat.status_code == requests.codes.ok):
 			if not empty(resultaat.text):
@@ -457,23 +446,19 @@ class Badkamer(object):
 		resultaat = httpGet("http://192.168.178.24/status", label="Badkamer: ")
 		if (resultaat.status_code == requests.codes.ok):
 #			{"naam":"badkamer","temperatuur":22.00,"luchtvochtigheid":41.00,"drempelwaarde":51}
-			if not empty(resultaat.text):
-				try:
-					self.temperatuur		 = waarde(resultaat.json()["temperatuur"])
-					self.luchtvochtigheid = waarde(resultaat.json()["luchtvochtigheid"])
-					self.drempelwaarde	 = waarde(resultaat.json()["drempelwaarde"])
-				
-					bericht("Badkamer: %s, %s\% (%s\%)"%(self.temperatuur,self.luchtvochtigheid,self.drempelwaarde))
-				except:
-					pass
-			else:
-				bericht("Response uit de badkamer(192.168.178.24) is leeg")
+			try:
+				self.temperatuur		 = waarde(resultaat.json()["temperatuur"])
+				self.luchtvochtigheid = waarde(resultaat.json()["luchtvochtigheid"])
+				self.drempelwaarde	 = waarde(resultaat.json()["drempelwaarde"])
+			
+				bericht("Badkamer: %s, %s\% (%s\%)"%(self.temperatuur,self.luchtvochtigheid,self.drempelwaarde))
+			except:
+				pass
 		return
 		
 	def stop(self):
 		bericht("%s wordt gestopt..."%self.__class__.__name__.capitalize())
 		self.thread.cancel()
-				
 
 def getstatus():
 	global schakelaars, sensoren, thread
@@ -612,9 +597,7 @@ class myHandler(BaseHTTPRequestHandler):
 			if	command.endswith("temperatuur"):
 				self.respond("{\"temperature\":%s}"%(woonkamer.temperatuur) )
 			else:
-				if command.endswith(("piraan","piruit")):
-					woonkamer.schakel(command[-6:])
-				elif command.endswith(("aan","uit","flp")):
+				if command.endswith(("aan","uit","flp")):
 					woonkamer.schakel(command[-3:])
 				self.respond("%s"%woonkamer.aanuit)
 			
@@ -635,8 +618,6 @@ class myHandler(BaseHTTPRequestHandler):
 				self.respond("%s"%tuinhuis.schakel(command[-3:]))
 			elif command.endswith("lamp"):
 				self.respond("%s"%tuinhuis.aanuit)
-			elif command.endswith("bereikbaar"):
-				self.respond("%s"%tuinhuis.bereikbaar)
 			elif command.startswith("tuinhuisupdate"):
 				tuinhuis.temperatuur = float(command[command.find(":")+1:])
 				self.respond("{\"temperature\":%s}"%tuinhuis.temperatuur)
@@ -754,8 +735,8 @@ try:
 	badkamer		 = Badkamer()
 	alarmsysteem = woonveilig()
 	duplicator	 = octoprint()
-	woonkamer 	 = woonkamerinit()
-	keuken		 = keukeninit()
+	woonkamer 	 = Woonkamer()
+	keuken		 = Keuken()
 	tuinhuis		 = Tuinhuis()
 	
 	getstatus()

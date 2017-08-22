@@ -38,6 +38,11 @@ from pyA20.gpio import gpio
 from pyA20.gpio import port
 from pyA20.gpio import connector
 
+# telegram adressen
+Johannes_Smits	=  "12463680"
+alarmsysteem	= "-24143102"
+deurbel			= "-15033899"
+
 def bericht(message=None, Telegram=False, viaPushover=False):
 	if not message is None:
 		print("\033[3m%s\033[0m - %s"%(time.strftime("%H:%M:%S"),message))
@@ -79,14 +84,24 @@ class ds18b20(object):
 	def __init__(self):
 		self.file = "/sys/bus/w1/devices/28-800000036068/w1_slave"
 		self.waarde = 0
-			
+		self.interval = randint(275,325)
+		self.check()
+		bericht("Temperatuur wordt iedere %i seconden opgehaald. Het is %s graden"%(self.interval,self.waarde))
+	
 	def check(self):
+		self.thread = threading.Timer(self.interval, self.check)
+		self.thread.start()
+		
 		try:
 			with open(self.file, 'r') as content_file:
 				content = content_file.read()
 			self.waarde = int(content[content.find("t=")+2:])/1000
 		except:
 			bericht("Fout bij ophalen temperatuur")
+			
+	def stop(self):
+		bericht("Temperatuur check wordt gestopt..."%self.gpio)
+		self.thread.cancel()
 
 		return self.waarde
 
@@ -97,7 +112,7 @@ class aanuit(object):
 		gpio.setcfg(self.gpio, gpio.OUTPUT)	# Configure for use with relais
 		self.interval = randint(275,325)		
 		self.check()
-		bericht("GPIO(%s) is gereed, waarde is %s"%(self.gpio, self.aanuit))
+		bericht("Waarde GPIO(%s) wordt iedere %i seconden opgehaald. Waarde is nu %s"%(self.gpio, self.interval, self.aanuit))
 			
 	def schakel(self, aanofuit):
 		if aanofuit == "flp":
@@ -127,7 +142,8 @@ class deursensor(object):
 		gpio.setcfg(self.gpio, gpio.INPUT)	# Configure for deursensor
 		self.waarde = gpio.input(self.gpio)	
 		self.check()
-		bericht("Object is gereed, waarde is %s"%(self.waarde))
+		self.waarschuwing()
+		bericht("Waarde deursensor wordt iedere %i seconden opgehaald. Waarde is nu %s"%(self.interval, self.waarde))
 
 	def check(self):
 		self.thread = threading.Timer(self.interval, self.check)
@@ -141,12 +157,20 @@ class deursensor(object):
 				requests.get("http://192.168.178.50:1208?schuurdeur:%s"%tekst, timeout=2)	# update de status in homebridge
 			except:				
 				print("\033[3m%s\033[0m - probleem bij deurstatus update"%time.strftime("%H:%M:%S"))
-#			bericht("Pin (%s) heeft waarde %s"%(self.gpio,self.waarde))
 		return self.waarde
+
+	def waarschuwing(self, uren = [22,23]):
+		self.thread2 = threading.Timer(900, self.waarschuwing)
+		self.thread2.start()
+
+		if (int(time.strftime("%H")) in uren):
+			if self.waarde: #  de deur is open
+				telegram(alarmsysteem, "De deur van het tuinhuis staat nog open")
 
 	def stop(self):
 		bericht("GPIO(%s) check wordt gestopt..."%self.gpio)
 		self.thread.cancel()
+		self.thread2.cancel()
 		
 #	this class will handles any incoming request from the browser 
 class myHandler(BaseHTTPRequestHandler):
@@ -188,10 +212,10 @@ class myHandler(BaseHTTPRequestHandler):
 			self.respond('{"deur":%s}'%deur.waarde)
 
 		elif command.startswith("temperatuur"):
-			self.respond('{"temperatuur":%s}'%temperatuur.check())
+			self.respond('{"temperatuur":%s}'%temperatuur.waarde)
 
 		else:
-			self.respond('{"temperatuur":%s,"deur":%s,"schakelaar":%s}'%(temperatuur.check(),deur.waarde,schakelaar.aanuit))
+			self.respond('{"temperatuur":%s,"deur":%s,"schakelaar":%s}'%(temperatuur.waarde,deur.waarde,schakelaar.aanuit))
 		return
 
 gpio.init() #Initialize module. Always called first

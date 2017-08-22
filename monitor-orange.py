@@ -105,8 +105,8 @@ class tuinhuis:
 				if not self.laatstestatus: #  de deur is dicht
 					print (time.strftime("%H:%M:%S ") + "De deur van het tuinhuis is dicht")
 				elif self.laatstestatus: #  de deur is open
-					kreten = ['Ter info;','Hey','Hi', 'Christie,', 'Wist je...', 'Bij Toutatis!', 'Allemachtig,', 'Hallo is daar iemand,']
-					telegramMsg(alarmsysteem, "%s de deur van het tuinhuis staat nog open"%kreten[random.randrange(6)])
+					kreten = ['Ter info;','Hey','Hi', 'Christie,', 'Wist je...', 'Bij Toutatis!', 'Allemachtig,']
+##					telegramMsg(alarmsysteem, "%s de deur van het tuinhuis staat nog open"%kreten[random.randrange(6)])
 
 	def updatestatus(self, openofdicht = 0):
 		if openofdicht in range(2): # check of de waarde is 0 of 1
@@ -233,7 +233,7 @@ try:
 			jsonstr = jsonstr.decode("utf8")
 			
 			bericht("ontvangen via UDP: %s (%s)" % (jsonstr.strip(), addr) )
-			
+			''' 			
 			if "tuinhuis" in jsonstr:
 				tuinhuisdeur.updatestatus( int(json.loads(jsonstr.strip())["deur"]) )
 				# nu we toch bezig zijn, update de status van de temperatuur ook gelijk even in homebridge 
@@ -246,8 +246,8 @@ try:
 						bericht("Time-out bij temperatuur update")
 					except:				
 						bericht("Temperatuur update mislukt")
-									
-			elif "reset aanwezigheid" in jsonstr:
+			'''									
+			if "reset aanwezigheid" in jsonstr:
 				arp.gevonden = time.time()
 				telegramMsg(Johannes_Smits, "Aanwezigheidstimer gereset")
 
