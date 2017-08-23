@@ -37,6 +37,7 @@ sensoren	=	json.loads( jsonstring )
 
 thread = None # voor getstatus() thread
 
+
 class octoprint():
 	def __init__(self):
 		self.hotend = 0

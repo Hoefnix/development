@@ -199,9 +199,9 @@ class myHandler(BaseHTTPRequestHandler):
 		command = self.requestline.replace("GET /","").replace("?","")
 		command = command[:command.find("HTTP")].strip()
 		
-		if "status" == command:
+		if "update" == command:
 			self.respond("Status wordt bijgewerkt")
-			threading.Thread(target=getstatus).start()
+			threading.Thread(target=temperatuur.check).start()
 
 		elif command.startswith("schakelaar"):
 			if command.endswith(("aan","uit","flp")):
@@ -215,7 +215,10 @@ class myHandler(BaseHTTPRequestHandler):
 			self.respond('{"temperatuur":%s}'%temperatuur.waarde)
 
 		else:
-			self.respond('{"temperatuur":%s,"deur":%s,"schakelaar":%s}'%(temperatuur.waarde,deur.waarde,schakelaar.aanuit))
+			with open("/sys/class/thermal/thermal_zone1/temp" , 'r') as content_file:
+				cputemp = int(content_file.read())
+				 
+			self.respond('{"temperatuur":%s,"deur":%s,"schakelaar":%s,"cpu":%s}'%(temperatuur.waarde,deur.waarde,schakelaar.aanuit,cputemp))
 		return
 
 gpio.init() #Initialize module. Always called first

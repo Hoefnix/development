@@ -204,8 +204,7 @@ try:
 	huisstatus = {"keukendeur":0}
 	
 	while True:
-
-	#	check de status van het alarmsysteem
+#		check de status van het alarmsysteem
 		try:
 			if ((time.time()-startijd)/60>5):	# om de vijf minuten
 				startijd = time.time()				# reset timer

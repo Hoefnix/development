@@ -143,13 +143,13 @@ try:
 						print (time.strftime("%a om %H:%M:%S ") + message)
 						if	allin(message, ["licht", "aan", "woonkamer"]):
 							telegramMsg(element[search]["from"]["id"], "Woonkamerverlichting wordt nu aangezet" )
-							bericht(httpGet("http://192.168.178.100:1208?woonkamer:aan").url)
-							bericht(httpGet("http://192.168.178.100:1208?bureaulamp:aan").url)
+							bericht(httpGet("http://192.168.178.50:1208?woonkamer:aan").url)
+							bericht(httpGet("http://192.168.178.50:1208?bureaulamp:aan").url)
 							
 						elif allin(message, ["licht", "uit", "woonkamer"]):
 							telegramMsg(element[search]["from"]["id"], "Woonkamerverlichting wordt nu uitgezet" )
-							bericht(httpGet("http://192.168.178.100:1208?woonkamer:uit").url)
-							bericht(httpGet("http://192.168.178.100:1208?bureaulamp:uit").url)
+							bericht(httpGet("http://192.168.178.50:1208?woonkamer:uit").url)
+							bericht(httpGet("http://192.168.178.50:1208?bureaulamp:uit").url)
 							
 						elif message == "externalip":
 							ipadres = httpGet("http://myexternalip.com/raw").content.decode("utf-8").strip(' \t\n\r')
@@ -157,46 +157,46 @@ try:
 							
 						elif allin(message, ['bureaulamp', 'aan']):
 							telegramMsg(element[search]["from"]["id"], "Bureaulamp wordt nu aangezet" )	
-							bericht(httpGet("http://192.168.178.100:1208?bureaulamp:aan").url)
+							bericht(httpGet("http://192.168.178.50:1208?bureaulamp:aan").url)
 							
 						elif allin(message, ['bureaulamp', 'uit']):
 							telegramMsg(element[search]["from"]["id"], "Bureaulamp wordt nu uitgezet" )	
-							bericht(httpGet("http://192.168.178.100:1208?bureaulamp:uit").url)
+							bericht(httpGet("http://192.168.178.50:1208?bureaulamp:uit").url)
 								
 						elif	 message == "bureau aan":
 							if (socket.gethostname().lower() == "serverpi"):
 								telegramMsg(element[search]["from"]["id"], "Bureau en printer worden aangezet" )
-								bericht(httpGet("http://192.168.178.100:1208?bureau:aan").url)
+								bericht(httpGet("http://192.168.178.50:1208?bureau:aan").url)
 
 						elif	 message == "bureau uit":
 							if (socket.gethostname().lower() == "serverpi"):
 								telegramMsg(element[search]["from"]["id"], "Bureau en printer worden uitgezet" )
-								bericht(httpGet("http://192.168.178.100:1208?bureau:uit").url)
+								bericht(httpGet("http://192.168.178.50:1208?bureau:uit").url)
 		
 						elif	 message == "sproeier aan":
 							telegramMsg(element[search]["from"]["id"], "Sproeier wordt aangezet" )
-							bericht(httpGet("http://192.168.178.100:1208?aan:2").url)
+							bericht(httpGet("http://192.168.178.50:1208?aan:2").url)
 							
 						elif	 message == "sproeier uit":
 							telegramMsg(element[search]["from"]["id"], "Sproeier wordt uitgezet" )
-							bericht(httpGet("http://192.168.178.100:1208?uit:2").url)		
+							bericht(httpGet("http://192.168.178.50:1208?uit:2").url)		
 		
 						elif allin(message, ['licht', 'aan', 'keuken']):
 							if (socket.gethostname().lower() == "serverpi"):
 								telegramMsg(element[search]["from"]["id"], "Licht in de keuken wordt aangezet" )
-								bericht(httpGet("http://192.168.178.100:1208?keuken:aan").url)
+								bericht(httpGet("http://192.168.178.50:1208?keuken:aan").url)
 
 						elif allin(message, ['licht', 'uit', 'keuken']):
 							if (socket.gethostname().lower() == "serverpi"):
 								telegramMsg(element[search]["from"]["id"], "Licht in de keuken wordt uitgezet" )
-								bericht(httpGet("http://192.168.178.100:1208?keuken:uit").url)
+								bericht(httpGet("http://192.168.178.50:1208?keuken:uit").url)
 				
 						elif allin(message, ['welterusten']):
 							if (socket.gethostname().lower() == "serverpi"):
 								telegramMsg(element[search]["from"]["id"], "Licht wordt overal uitgezet" )
-								bericht(httpGet("http://192.168.178.100:1208?keuken:uit").url)
-								bericht(httpGet("http://192.168.178.100:1208?woonkamer:uit").url)
-								bericht(httpGet("http://192.168.178.100:1208?bureaulamp:uit").url)
+								bericht(httpGet("http://192.168.178.50:1208?keuken:uit").url)
+								bericht(httpGet("http://192.168.178.50:1208?woonkamer:uit").url)
+								bericht(httpGet("http://192.168.178.50:1208?bureaulamp:uit").url)
 								bericht(httpGet("http://192.168.178.210?uit" ).url) # bureau
 				
 						elif allin(message, ['reset', 'aanwezig']):
@@ -208,11 +208,11 @@ try:
 						elif 	message[:5] == "alarm":
 							commando =  message.replace("alarm", "").strip()
 							if   commando == "aan":
-								resultaat = httpGet("http://192.168.178.100:1208?alarmsysteem:arm")
+								resultaat = httpGet("http://192.168.178.50:1208?alarmsysteem:arm")
 								if (resultaat.status_code == requests.codes.ok):
 									telegramMsg(element[search]["from"]["id"], "Alarm aan gezet" )
 							elif commando == "uit":
-								resultaat = httpGet("http://192.168.178.100:1208?alarmsysteem:disarm")
+								resultaat = httpGet("http://192.168.178.50:1208?alarmsysteem:disarm")
 								if (resultaat.status_code == requests.codes.ok):
 									telegramMsg(element[search]["from"]["id"], "Alarm uit gezet" )
 							
@@ -225,13 +225,6 @@ try:
 								#s.sendto(bytes('{"kattenluik":"test"}',"utf-8"), ('192.168.178.255', MYPORT))
 								udp.broadcast('{"kattenluik":"test"}')
 
-						elif 	message[:5] == "pauze":
-							pauze = strtonum( message.replace("pauze", "").strip()) 
-							if (socket.gethostname().lower() == "kattenpi"):
-								with open('/var/tmp/pauze', 'w+') as myfile:
-									pauze = 30 if pauze <= 0 else pauze
-									myfile.write(str(pauze))
-
 						elif	message[:11] == "temperatuur":
 							if (socket.gethostname().lower() == "serverpi"):
 								if  message.endswith("buiten"):
@@ -243,7 +236,7 @@ try:
 									if (resultaat.status_code is requests.codes.ok):
 										telegramMsg(element[search]["from"]["id"], "Temperatuur in de woonkamer %s graden"%resultaat.text)
 								elif message.endswith("leanne"):
-									resultaat = httpGet("http://192.168.178.100:1208?leanne:temperatuur")	# temp meter
+									resultaat = httpGet("http://192.168.178.50:1208?leanne:temperatuur")	# temp meter
 									if (resultaat.status_code is requests.codes.ok):
 										telegramMsg(element[search]["from"]["id"], "Het is %s graden in leannes kamer"%resultaat.text )
 								else:
@@ -269,7 +262,7 @@ try:
 						
 				lastUpdateId = element["update_id"] + 1
 				
-		time.sleep(4)						# om processor te ontlasten
+		time.sleep(4)	# om processor te ontlasten
 			
 except KeyboardInterrupt:
 # , RuntimeError, TypeError, NameError, ValueError):
