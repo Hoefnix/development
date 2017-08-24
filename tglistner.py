@@ -61,53 +61,88 @@ def httpGet( url, auth = None, params = ""):
 	resultaat.status_code = -1
 	try:
 		resultaat = requests.get( url, params=params, auth=auth )
+		if "telegram" not in url:
+			bericht(resultaat.url)
 	except:
-		bericht("fout bij aanroep %s"%url)
+			bericht("fout bij aanroep %s"%url)
 	return resultaat
 	
 def bericht(message=None):
 	if not message is None:
 		print("\033[3m%s\033[0m - %s"%(time.strftime("%H:%M:%S"),message))
 
+def graden( waarde ):
+	return "%0.1f%sC"%(waarde, u"\u00b0")
+
 def doSomething( string ):
 	global udp
 	
 	message = string["text"].lower()
 
-	if	allin(message, ["licht", "aan", "woonkamer"]):
-		respond(string["from"]["id"], "Woonkamerverlichting wordt nu aangezet" )
-		bericht(httpGet("http://192.168.178.100:1208?woonkamer:aan").url)
-		bericht(httpGet("http://192.168.178.100:1208?bureaulamp:aan").url)
-							
-	elif allin(message, ["licht", "uit", "woonkamer"]):
-		respond(string["from"]["id"], "Woonkamerverlichting wordt nu uitgezet" )
-		bericht(httpGet("http://192.168.178.100:1208?woonkamer:uit").url)
-		bericht(httpGet("http://192.168.178.100:1208?bureaulamp:uit").url)
+	if "woonkamer" in message:
+		aanofuit = "aan" if "aan" in message else "uit" if "uit" in message else ""
+		if aanofuit:
+			respond(string["from"]["id"], "Woonkamerverlichting wordt %sgezet"%aanofuit )
+			httpGet("http://192.168.178.50:1208?woonkamer:%s"%aanofuit)
+			httpGet("http://192.168.178.50:1208?bureaulamp:%s"%aanofuit)
+
+	elif "bureau" in message:
+		aanofuit = "aan" if "aan" in message else "uit" if "uit" in message else ""
+		if aanofuit:
+			respond(string["from"]["id"], "Bureau en printer worden %sgezet"%aanofuit )
+			httpGet("http://192.168.178.50:1208?bureau:%s"%aanofuit)
+
+	elif "sproeier" in message:
+		aanofuit = "aan" if "aan" in message else "uit" if "uit" in message else ""
+		if aanofuit:
+			respond(string["from"]["id"], "Sproeier wordt %sgezet"%aanofuit )
+			httpGet("http://192.168.178.50:1208?stopcontact:%s"%aanofuit)
+		
+	elif "keuken" in message:
+		aanofuit = "aan" if "aan" in message else "uit" if "uit" in message else ""
+		if aanofuit:
+			respond(string["from"]["id"], "Keukenverlichting wordt %sgezet"%aanofuit )
+			httpGet("http://192.168.178.50:1208?keukenverlichting:%s"%aanofuit)
+
+	elif "temperatuur" in message:
+		if "serverpi" in socket.gethostname():
+			woonk = httpGet("http://192.168.178.50:1208?woonkamer:temperatuur").json()["temperature"]
+			tuinh = httpGet("http://192.168.178.50:1208?tuinhuis:temperatuur").json()["temperature"]
+			badka = httpGet("http://192.168.178.50:1208?badkamer:temphum").json()["temperature"]
+#			gevel = httpGet("http://192.168.178.50:1208?gevel:temperatuur").json()["temperature"]
+			respond(string["from"]["id"], "Temperatuur\n- woonkamer %s\n- tuinhuis %s\n- badkamer %s\n- gevel %s"%(graden(woonk),graden(tuinh),graden(badka),graden(gevel)) )
 		
 	elif allin(message, ['welterusten']):
 		respond(string["from"]["id"], "Licht wordt overal uitgezet" )
-		bericht(httpGet("http://192.168.178.100:1208?keuken:uit").url)
-		bericht(httpGet("http://192.168.178.100:1208?woonkamer:uit").url)
-		bericht(httpGet("http://192.168.178.100:1208?bureaulamp:uit").url)
-		bericht(httpGet("http://192.168.178.210?uit" ).url) # bureau
+		httpGet("http://192.168.178.50:1208?keuken:uit")
+		httpGet("http://192.168.178.50:1208?woonkamer:uit")
+		httpGet("http://192.168.178.50:1208?bureaulamp:uit")
+		httpGet("http://192.168.178.50:1208?bureau:uit")
+
+	elif "alarm" in message:
+		aanofuit = "arm" if "aan" in message else "disarm" if "uit" in message else ""
+		if aanofuit:
+			resultaat = httpGet("http://192.168.178.50:1208?alarmsysteem:%s"%aanofuit)
+			if (resultaat.status_code == requests.codes.ok):
+				aanofuit = "aan" if resultaat.text == "1" else "uit" if resultaat.text == "3" else resultaat.text
+				respond(string["from"]["id"], "Alarmsysteem is %s(%s)"%(aanofuit, resultaat.text))
+
+	elif "kattenluik" in message:
+		testoffoto = "test" if "test" in message else "foto" if "foto" in message else ""
 		
-	elif allin(message, ["foto", "kattenluik"]):
-		udp.broadcast('{"kattenluik":"foto"}')
-		
-	elif allin(message, ["test", "kattenluik"]):
-		udp.broadcast('{"kattenluik":"test"}')
+		nulofeen = abs(nulofeen-1)
+			
+		if testoffoto:
+			udp.broadcast('{"kattenluik":"%s"}'%testoffoto)
+
+	elif "aanwezig" in message:
+		if "reset" in message:
+			udp.broadcast("reset aanwezigheid")
+		udp.broadcast("aanwezig")
 		
 	elif message == "externalip":
 		ipadres = httpGet("http://myexternalip.com/raw").content.decode("utf-8").strip(' \t\n\r')
-		respond(string["from"]["id"], ipadres)
-		
-	elif	 message == "bureau aan":
-		respond(string["from"]["id"], "Bureau en printer worden aangezet" )
-		bericht(httpGet("http://192.168.178.100:1208?bureau:aan").url)
-
-	elif	 message == "bureau uit":
-		respond(string["from"]["id"], "Bureau en printer worden uitgezet" )
-		bericht(httpGet("http://192.168.178.100:1208?bureau:uit").url)
+		respond(string["from"]["id"], "extern ip-adres is %s"%ipadres)
 		
 	elif message[:4] == "ping":
 		respond(string["from"]["id"], "pong" )
@@ -122,7 +157,7 @@ class udpinit(object):
 		self.s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
 	def broadcast(self, message = ""):
-		bericht("Sending: %s\n"%message)
+		bericht("Sending: %s"%message)
 		self.s.sendto(bytes(message,"UTF-8"),('<broadcast>',self.port))
 
 subproc_output = subprocess.check_output("/usr/bin/curl -s -X POST https://api.telegram.org/bot112338525:AAGyQLESoyVnCAdBJZTdaRcgV5KwN3uGipU/getMe", shell=True)
@@ -149,7 +184,7 @@ try:
 			continue
 
 		if (response.status_code == requests.codes.ok):
-			if response.json()["ok"]:					# lees de berichten in
+			if response.json()["ok"]:								# lees de berichten in
 				for element in response.json()["result"]:		# voor het geval als er meerdere berichten staan te wachten
 					msge = "message"
 					if msge not in element:

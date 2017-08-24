@@ -116,8 +116,8 @@ try:
 	udp = udpinit()
 	
 	while (True):		
-		parsed_json_data = botUpdates(lastUpdateId)
-#		parsed_json_data = tgGetUpdates(lastUpdateId)		# lees de berichten in
+#		parsed_json_data = botUpdates(lastUpdateId)
+		parsed_json_data = tgGetUpdates(lastUpdateId)		# lees de berichten in
 		if parsed_json_data["ok"]:							# lees de berichten in5
 			doorgaan = False
 #			berich(parsed_json_data["result"])
