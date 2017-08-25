@@ -109,8 +109,7 @@ def doSomething( string ):
 			woonk = httpGet("http://192.168.178.50:1208?woonkamer:temperatuur").json()["temperature"]
 			tuinh = httpGet("http://192.168.178.50:1208?tuinhuis:temperatuur").json()["temperature"]
 			badka = httpGet("http://192.168.178.50:1208?badkamer:temphum").json()["temperature"]
-#			gevel = httpGet("http://192.168.178.50:1208?gevel:temperatuur").json()["temperature"]
-			respond(string["from"]["id"], "Temperatuur\n- woonkamer %s\n- tuinhuis %s\n- badkamer %s\n- gevel %s"%(graden(woonk),graden(tuinh),graden(badka),graden(gevel)) )
+			respond(string["from"]["id"], "\nTemperatuur\n- woonkamer %s\n- tuinhuis %s\n- badkamer %s\n"%(graden(woonk),graden(tuinh),graden(badka)) )
 		
 	elif allin(message, ['welterusten']):
 		respond(string["from"]["id"], "Licht wordt overal uitgezet" )
@@ -129,9 +128,6 @@ def doSomething( string ):
 
 	elif "kattenluik" in message:
 		testoffoto = "test" if "test" in message else "foto" if "foto" in message else ""
-		
-		nulofeen = abs(nulofeen-1)
-			
 		if testoffoto:
 			udp.broadcast('{"kattenluik":"%s"}'%testoffoto)
 
